@@ -101,6 +101,11 @@ func main() {
 			Destination: &pushsyncDelay,
 		},
 		cli.BoolFlag{
+			Name:        "pushsync-delay",
+			Usage:       "wait for content to be push synced",
+			Destination: &pushsyncDelay,
+		},
+		cli.BoolFlag{
 			Name:        "sync-delay",
 			Usage:       "wait for content to be synced",
 			Destination: &syncDelay,
