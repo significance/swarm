@@ -48,6 +48,7 @@ func (ts *Tags) Create(s string, total int64) (*Tag, error) {
 		Name:      s,
 		startedAt: time.Now(),
 		total:     total,
+		tctx:      context.Background(), // tracing context
 	}
 	if _, loaded := ts.tags.LoadOrStore(t.Uid, t); loaded {
 		return nil, errExists
