@@ -95,14 +95,11 @@ func main() {
 			Usage:       "sync mode - pushsync or pullsync or both",
 			Destination: &syncMode,
 		},
-<<<<<<< HEAD
 		cli.BoolFlag{
 			Name:        "pushsync-delay",
 			Usage:       "wait for content to be push synced",
 			Destination: &pushsyncDelay,
 		},
-=======
->>>>>>> swarm-smoke: fix check max prox hosts for pull/push sync modes
 		cli.BoolFlag{
 			Name:        "pushsync-delay",
 			Usage:       "wait for content to be push synced",
