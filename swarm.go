@@ -47,6 +47,7 @@ import (
 	"github.com/ethersphere/swarm/fuse"
 	"github.com/ethersphere/swarm/log"
 	"github.com/ethersphere/swarm/network"
+	"github.com/ethersphere/swarm/network/retrieve"
 	"github.com/ethersphere/swarm/network/stream"
 	"github.com/ethersphere/swarm/p2p/protocols"
 	"github.com/ethersphere/swarm/pss"
@@ -188,7 +189,9 @@ func NewSwarm(config *api.Config, mockStore *mock.NodeStore) (self *Swarm, err e
 		network.NewKadParams(),
 	)
 	delivery := stream.NewDelivery(to, self.netStore)
-	self.netStore.RemoteGet = delivery.RequestFromPeers
+
+	retrieval := retrieve.NewRetrieval(to, self.netStore)
+	self.netStore.RemoteGet = retrieval.RequestFromPeers
 
 	feedsHandler.SetStore(self.netStore)
 
