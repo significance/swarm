@@ -217,7 +217,7 @@ func NewSwarm(config *api.Config, mockStore *mock.NodeStore) (self *Swarm, err e
 
 	log.Debug("Setup local storage")
 
-	self.bzz = network.NewBzz(bzzconfig, to, self.stateStore, self.streamer.GetSpec(), self.streamer.Run)
+	self.bzz = network.NewBzz(bzzconfig, to, self.stateStore, newstream.Spec, self.newstreamer.Run)
 
 	// Pss = postal service over swarm (devp2p over bzz)
 	self.ps, err = pss.New(to, config.Pss)
@@ -428,7 +428,7 @@ func (s *Swarm) Start(srv *p2p.Server) error {
 	}(startTime)
 
 	startCounter.Inc(1)
-	s.streamer.Start(srv)
+	s.newstreamer.Start(srv)
 	return nil
 }
 
@@ -534,7 +534,7 @@ func (s *Swarm) APIs() []rpc.API {
 
 	apis = append(apis, s.bzz.APIs()...)
 
-	apis = append(apis, s.streamer.APIs()...)
+	apis = append(apis, s.newstreamer.APIs()...)
 
 	if s.ps != nil {
 		apis = append(apis, s.ps.APIs()...)
