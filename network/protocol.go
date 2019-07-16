@@ -205,7 +205,7 @@ func (b *Bzz) Protocols() []p2p.Protocol {
 			Name:    b.streamerSpec.Name,
 			Version: b.streamerSpec.Version,
 			Length:  b.streamerSpec.Length(),
-			Run:     b.streamerRun, //b.RunProtocol(b.streamerSpec, b.streamerRun),
+			Run:     b.streamerRun,
 		})
 	}
 	return protocol

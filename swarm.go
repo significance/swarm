@@ -428,7 +428,8 @@ func (s *Swarm) Start(srv *p2p.Server) error {
 	}(startTime)
 
 	startCounter.Inc(1)
-	s.newstreamer.Start(srv)
+	_ = s.newstreamer.Start(srv)
+	_ = s.retrieval.Start(srv)
 	return nil
 }
 
@@ -457,8 +458,8 @@ func (s *Swarm) Stop() error {
 		s.accountingMetrics.Close()
 	}
 
-	s.newstreamer.Stop()
-	s.retrieval.Stop()
+	_ = s.newstreamer.Stop()
+	_ = s.retrieval.Stop()
 
 	if s.netStore != nil {
 		s.netStore.Close()
@@ -486,6 +487,8 @@ func (s *Swarm) Protocols() (protos []p2p.Protocol) {
 		protos = append(protos, s.bzz.Protocols()...)
 	} else {
 		protos = append(protos, s.bzz.Protocols()...)
+
+		protos = append(protos, s.retrieval.Protocols()...)
 
 		if s.ps != nil {
 			protos = append(protos, s.ps.Protocols()...)
