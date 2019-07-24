@@ -313,7 +313,7 @@ func (p *Pusher) needToSync(ch chunk.Chunk) bool {
 		}
 
 		// should i sync??
-		if !p.kad.CloserPeerThanMe(addr) {
+		if !p.kad.CloserPeerThanMeXOR(addr) {
 			// no =>
 
 			// mark as synced

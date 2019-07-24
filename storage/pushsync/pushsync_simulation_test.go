@@ -179,7 +179,7 @@ func newServiceFunc(ctx *adapters.ServiceContext, bucket *sync.Map) (node.Servic
 
 	privKey, err := crypto.GenerateKey()
 	pssp := pss.NewParams().WithPrivateKey(privKey)
-	ps, err := pss.NewPss(kad, pssp)
+	ps, err := pss.New(kad, pssp)
 	if err != nil {
 		return nil, nil, err
 	}
