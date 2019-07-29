@@ -202,7 +202,7 @@ func (p *Pusher) sync() {
 					return
 				}
 
-				timediff := time.Now().Sub(item.sentAt)
+				timediff := time.Since(item.sentAt)
 				log.Debug("time to sync", "dur", timediff)
 
 				metrics.GetOrRegisterResettingTimer("pusher.chunk.roundtrip", nil).Update(timediff)
