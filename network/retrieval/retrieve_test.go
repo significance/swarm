@@ -306,7 +306,7 @@ func newBzzRetrieveWithLocalstore(ctx *adapters.ServiceContext, bucket *sync.Map
 
 	netStore := storage.NewNetStore(localStore, n.ID())
 	lnetStore := storage.NewLNetStore(netStore)
-	fileStore := storage.NewFileStore(lnetStore, storage.NewFileStoreParams(), chunk.NewTags())
+	fileStore := storage.NewFileStore(lnetStore, lnetStore, storage.NewFileStoreParams(), chunk.NewTags())
 
 	var store *state.DBStore
 	// Use on-disk DBStore to reduce memory consumption in race tests.
