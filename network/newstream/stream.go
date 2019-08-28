@@ -105,6 +105,9 @@ type Registry struct {
 	quit       chan struct{}
 
 	logger log.Logger
+
+	lastReceivedChunkTime   time.Time
+	lastReceivedChunkTimeMu sync.RWMutex
 }
 
 // New creates a new stream protocol handler
@@ -934,6 +937,7 @@ func (r *Registry) clientHandleChunkDelivery(ctx context.Context, p *Peer, msg *
 	p.logger.Debug("clientHandleChunkDelivery", "ruid", msg.Ruid, "chunks", len(msg.Chunks))
 	processReceivedChunksMsgCount.Inc(1)
 	lastReceivedChunksMsg.Update(time.Now().UnixNano())
+	r.setLastReceivedChunkTime()
 	start := time.Now()
 	defer func(start time.Time) {
 		s := time.Since(start)
@@ -1212,4 +1216,16 @@ func (r *Registry) Stop() error {
 	}
 
 	return nil
+}
+
+func (r *Registry) setLastReceivedChunkTime() {
+	r.lastReceivedChunkTimeMu.Lock()
+	r.lastReceivedChunkTime = time.Now()
+	r.lastReceivedChunkTimeMu.Unlock()
+}
+
+func (r *Registry) LastReceivedChunkTime() time.Time {
+	r.lastReceivedChunkTimeMu.RLock()
+	defer r.lastReceivedChunkTimeMu.RUnlock()
+	return r.lastReceivedChunkTime
 }
