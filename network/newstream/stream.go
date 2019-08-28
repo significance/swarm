@@ -445,10 +445,10 @@ func (r *Registry) serverHandleGetRangeHead(ctx context.Context, p *Peer, msg *G
 		p.Drop()
 		return
 	}
-	//collectBatchStart := time.Now()
+	collectBatchStart := time.Now()
 	h, f, t, e, err := r.serverCollectBatch(ctx, p, provider, key, msg.From, 0)
-	//s := time.Since(collectBatchStart)
-	//p.logger.Warn("FILTER serverCollectBatch for HEAD ended", "took", s)
+	s := time.Since(collectBatchStart)
+	p.logger.Warn("FILTER serverCollectBatch for HEAD ended", "took", s, "key", key)
 	p.logger.Debug("peer.serverCollectBatch", "stream", msg.Stream, "len(h)", len(h), "f", f, "t", t, "e", e, "err", err, "ruid", msg.Ruid, "msg.from", msg.From)
 	if err != nil {
 		p.logger.Error("erroring getting live batch for stream", "stream", msg.Stream, "err", err)
@@ -674,10 +674,10 @@ func (r *Registry) clientHandleOfferedHashes(ctx context.Context, p *Peer, msg *
 		addresses[iaddr] = hash
 		iaddr++
 	}
-	hasStart := time.Now()
+	//hasStart := time.Now()
 	hasses, err := provider.MultiNeedData(ctx, addresses...)
-	took := time.Since(hasStart)
-	p.logger.Warn("FILTER clientHandleOfferedHashes multiNeedData ended", "took", took)
+	//took := time.Since(hasStart)
+	//p.logger.Warn("FILTER clientHandleOfferedHashes multiNeedData ended", "took", took)
 	if err != nil {
 		p.logger.Error("multi need data returned an error, dropping peer", "err", err)
 		p.Drop()
@@ -862,10 +862,10 @@ func (r *Registry) serverHandleWantedHashes(ctx context.Context, p *Peer, msg *W
 			s1[v.String()] = true
 		}
 	}
-	getStart := time.Now()
+	//getStart := time.Now()
 	chunks, err := provider.Get(ctx, wantHashes...)
 	s := time.Since(getStart)
-	p.logger.Warn("FILTER provider get ended", "took", s)
+	//p.logger.Warn("FILTER provider get ended", "took", s)
 	if err != nil {
 		p.logger.Error("handleWantedHashesMsg", "err", err)
 		p.Drop()
@@ -924,10 +924,10 @@ func (r *Registry) serverHandleWantedHashes(ctx context.Context, p *Peer, msg *W
 			addrs = append(addrs, offer.hashes[i*HashSize:(i+1)*HashSize])
 		}
 	}
-	startSet := time.Now()
+	//startSet := time.Now()
 	err = provider.Set(ctx, addrs...)
 	s = time.Since(startSet)
-	p.logger.Warn("FILTER provider set ended", "took", s)
+	//p.logger.Warn("FILTER provider set ended", "took", s)
 	if err != nil {
 		p.logger.Error("error setting chunk as synced", "addrs", addrs, "err", err)
 	}
@@ -940,8 +940,8 @@ func (r *Registry) clientHandleChunkDelivery(ctx context.Context, p *Peer, msg *
 	r.setLastReceivedChunkTime()
 	start := time.Now()
 	defer func(start time.Time) {
-		//s := time.Since(start)
-		//p.logger.Warn("FILTER clientHandleChunkDelivery ended", "took", s)
+		s := time.Since(start)
+		p.logger.Warn("FILTER clientHandleChunkDelivery ended", "took", s)
 		metrics.GetOrRegisterResettingTimer("network.stream.handle_chunk_delivery.total-time", nil).UpdateSince(start)
 	}(start)
 
@@ -967,10 +967,10 @@ func (r *Registry) clientHandleChunkDelivery(ctx context.Context, p *Peer, msg *
 	if provider == nil {
 		p.Drop()
 	}
-	putStart := time.Now()
+	//putStart := time.Now()
 	seen, err := provider.Put(ctx, chunks...)
 	s := time.Since(putStart)
-	p.logger.Warn("FILTER provider put ended", "took", s)
+	//p.logger.Warn("FILTER provider put ended", "took", s)
 	if err != nil {
 		if err == storage.ErrChunkInvalid {
 			streamChunkDeliveryFail.Inc(1)
