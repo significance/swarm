@@ -236,6 +236,10 @@ type pauser interface {
 // serverHandleStreamInfoReq handles the StreamInfoReq message on the server side (Peer is the client)
 func (r *Registry) serverHandleStreamInfoReq(ctx context.Context, p *Peer, msg *StreamInfoReq) {
 	p.logger.Debug("handleStreamInfoReq")
+	defer func(t time.Time) {
+		s := time.Since(t)
+		p.logger.Debug("FILTER handleStreamInfoReq ended", "took", s)
+	}(time.Now())
 	streamRes := StreamInfoRes{}
 	if len(msg.Streams) == 0 {
 		p.logger.Error("nil streams msg requested")
@@ -284,6 +288,10 @@ func (r *Registry) serverHandleStreamInfoReq(ctx context.Context, p *Peer, msg *
 // clientHandleStreamInfoRes handles the StreamInfoRes message (Peer is the server)
 func (r *Registry) clientHandleStreamInfoRes(ctx context.Context, p *Peer, msg *StreamInfoRes) {
 	p.logger.Debug("handleStreamInfoRes")
+	defer func(t time.Time) {
+		s := time.Since(t)
+		p.logger.Debug("FILTER handleStreamInfoRes ended", "took", s)
+	}(time.Now())
 
 	if len(msg.Streams) == 0 {
 		p.logger.Error("StreamInfo response is empty")
@@ -350,12 +358,17 @@ func (r *Registry) clientHandleStreamInfoRes(ctx context.Context, p *Peer, msg *
 	}
 }
 func (r *Registry) clientRequestStreamHead(ctx context.Context, p *Peer, stream ID, from uint64) error {
-	p.logger.Debug("peer.requestStreamHead", "stream", stream, "from", from)
+	p.logger.Debug("clientRequestStreamHead", "stream", stream, "from", from)
 	return r.clientCreateSendWant(ctx, p, stream, from, nil, true)
 }
 
 func (r *Registry) clientRequestStreamRange(ctx context.Context, p *Peer, stream ID, cursor uint64) error {
-	p.logger.Debug("peer.requestStreamRange", "stream", stream, "cursor", cursor)
+	p.logger.Debug("clientRequestStreamRange", "stream", stream, "cursor", cursor)
+	defer func(t time.Time) {
+		s := time.Since(t)
+		p.logger.Debug("FILTER clientReqeustStreamRange ended", "took", s)
+	}(time.Now())
+
 	provider := r.getProvider(stream)
 	if provider == nil {
 		// at this point of the message exchange unsupported providers are illegal. drop peer
@@ -405,7 +418,11 @@ func (r *Registry) clientCreateSendWant(ctx context.Context, p *Peer, stream ID,
 }
 
 func (r *Registry) serverHandleGetRangeHead(ctx context.Context, p *Peer, msg *GetRange) {
-	p.logger.Debug("stream.handleGetRangeHead", "ruid", msg.Ruid)
+	p.logger.Debug("serverHandleGetRangeHead", "ruid", msg.Ruid)
+	defer func(t time.Time) {
+		s := time.Since(t)
+		p.logger.Debug("FILTER serverHandleGetRangeHead ended", "took", s)
+	}(time.Now())
 	start := time.Now()
 	defer func(start time.Time) {
 		metrics.GetOrRegisterResettingTimer("network.stream.handle_get_range_head.total-time", nil).UpdateSince(start)
@@ -425,7 +442,10 @@ func (r *Registry) serverHandleGetRangeHead(ctx context.Context, p *Peer, msg *G
 		p.Drop()
 		return
 	}
+	collectBatchStart := time.Now()
 	h, f, t, e, err := r.serverCollectBatch(ctx, p, provider, key, msg.From, 0)
+	s := time.Since(collectBatchStart)
+	p.logger.Debug("FILTER serverCollectBatch for HEAD ended", "took", s)
 	p.logger.Debug("peer.serverCollectBatch", "stream", msg.Stream, "len(h)", len(h), "f", f, "t", t, "e", e, "err", err, "ruid", msg.Ruid, "msg.from", msg.From)
 	if err != nil {
 		p.logger.Error("erroring getting live batch for stream", "stream", msg.Stream, "err", err)
@@ -483,9 +503,11 @@ func (r *Registry) serverHandleGetRangeHead(ctx context.Context, p *Peer, msg *G
 // in the case that for the specific interval no chunks exist - the server sends an empty OfferedHashes
 // message so that the client could seal the interval and request the next
 func (r *Registry) serverHandleGetRange(ctx context.Context, p *Peer, msg *GetRange) {
-	p.logger.Debug("peer.handleGetRange", "ruid", msg.Ruid)
+	p.logger.Debug("serverHandleGetRange", "ruid", msg.Ruid)
 	start := time.Now()
 	defer func(start time.Time) {
+		s := time.Since(start)
+		p.logger.Debug("FILTER serverHandleGetRange ended", "took", s)
 		metrics.GetOrRegisterResettingTimer("network.stream.handle_get_range.total-time", nil).UpdateSince(start)
 	}(start)
 
@@ -503,8 +525,10 @@ func (r *Registry) serverHandleGetRange(ctx context.Context, p *Peer, msg *GetRa
 		p.Drop()
 		return
 	}
-	log.Debug("peer.handleGetRange collecting batch", "from", msg.From, "to", msg.To, "stream", msg.Stream)
+	startCollect := time.Now()
+	log.Debug("handleGetRange collecting batch", "from", msg.From, "to", msg.To, "stream", msg.Stream)
 	h, f, t, e, err := r.serverCollectBatch(ctx, p, provider, key, msg.From, *msg.To)
+	p.logger.Debug("FILTER serverCollectBatch ended", "took", s)
 	if err != nil {
 		log.Error("erroring getting batch for stream", "peer", p.ID(), "stream", msg.Stream, "err", err)
 		p.Drop()
@@ -562,9 +586,11 @@ func (r *Registry) serverHandleGetRange(ctx context.Context, p *Peer, msg *GetRa
 
 // clientHandleOfferedHashes handles the OfferedHashes wire protocol message (Peer is the server)
 func (r *Registry) clientHandleOfferedHashes(ctx context.Context, p *Peer, msg *OfferedHashes) {
-	p.logger.Debug("stream.handleOfferedHashes", "ruid", msg.Ruid, "msg.lastIndex", msg.LastIndex)
+	p.logger.Debug("clientHandleOfferedHashes", "ruid", msg.Ruid, "msg.lastIndex", msg.LastIndex)
 	start := time.Now()
 	defer func(start time.Time) {
+		s := time.Since(start)
+		p.logger.Debug("FILTER clientHandleOfferedHashes ended", "took", s)
 		metrics.GetOrRegisterResettingTimer("network.stream.handle_offered_hashes.total-time", nil).UpdateSince(start)
 	}(start)
 
@@ -625,7 +651,8 @@ func (r *Registry) clientHandleOfferedHashes(ctx context.Context, p *Peer, msg *
 				return
 			}
 		}
-		return
+
+		return //no hashes offered for this interval which was just sealed. request next and return
 	}
 
 	want, err := bv.New(lenHashes / HashSize)
@@ -643,7 +670,10 @@ func (r *Registry) clientHandleOfferedHashes(ctx context.Context, p *Peer, msg *
 		addresses[iaddr] = hash
 		iaddr++
 	}
+	hasStart := time.Now()
 	hasses, err := provider.MultiNeedData(ctx, addresses...)
+	took := time.Since(hasStart)
+	p.logger.Debug("FILTER clientHandleOfferedHashes multiNeedData ended", "took", took)
 	if err != nil {
 		p.logger.Error("multi need data returned an error, dropping peer", "err", err)
 		p.Drop()
@@ -698,28 +728,7 @@ func (r *Registry) clientHandleOfferedHashes(ctx context.Context, p *Peer, msg *
 		p.Drop()
 		return
 	}
-	cur, ok := p.getCursor(w.stream)
-	if !ok {
-		metrics.GetOrRegisterCounter("network.stream.quit_unwanted", nil).Inc(1)
-		p.logger.Debug("no longer interested in stream. quitting", "stream", w.stream)
-		select {
-		case <-w.done:
-		default:
-			close(w.done)
-		}
-		p.mtx.Lock()
-		delete(p.openWants, msg.Ruid)
-		p.mtx.Unlock()
-		return
-	}
-	if w.head {
-		if err := r.clientRequestStreamHead(ctx, p, w.stream, msg.LastIndex+1); err != nil {
-			streamRequestNextIntervalFail.Inc(1)
-			p.logger.Error("error requesting next interval from peer", "err", err)
-			p.Drop()
-			return
-		}
-	}
+
 	select {
 	case err := <-errc:
 		if err != nil {
@@ -754,7 +763,24 @@ func (r *Registry) clientHandleOfferedHashes(ctx context.Context, p *Peer, msg *
 	case <-p.quit:
 		return
 	}
-	if !w.head {
+
+	cur, ok := p.getCursor(w.stream)
+	if !ok {
+		metrics.GetOrRegisterCounter("network.stream.quit_unwanted", nil).Inc(1)
+		p.logger.Debug("no longer interested in stream. quitting", "stream", w.stream)
+		p.mtx.Lock()
+		delete(p.openWants, msg.Ruid)
+		p.mtx.Unlock()
+		return
+	}
+	if w.head {
+		if err := r.clientRequestStreamHead(ctx, p, w.stream, msg.LastIndex+1); err != nil {
+			streamRequestNextIntervalFail.Inc(1)
+			p.logger.Error("error requesting next interval from peer", "err", err)
+			p.Drop()
+			return
+		}
+	} else {
 		if err := r.clientRequestStreamRange(ctx, p, w.stream, cur); err != nil {
 			streamRequestNextIntervalFail.Inc(1)
 			p.logger.Error("error requesting next interval from peer", "err", err)
@@ -832,6 +858,7 @@ func (r *Registry) serverHandleWantedHashes(ctx context.Context, p *Peer, msg *W
 			s1[v.String()] = true
 		}
 	}
+	getStart := time.Now()
 	chunks, err := provider.Get(ctx, wantHashes...)
 	if err != nil {
 		p.logger.Error("handleWantedHashesMsg", "err", err)
@@ -891,18 +918,23 @@ func (r *Registry) serverHandleWantedHashes(ctx context.Context, p *Peer, msg *W
 			addrs = append(addrs, offer.hashes[i*HashSize:(i+1)*HashSize])
 		}
 	}
+	startSet := time.Now()
 	err = provider.Set(ctx, addrs...)
+	s := time.Since(startSet)
+	p.logger.Debug("FILTER provider set ended", "took", s)
 	if err != nil {
 		p.logger.Error("error setting chunk as synced", "addrs", addrs, "err", err)
 	}
 }
 
 func (r *Registry) clientHandleChunkDelivery(ctx context.Context, p *Peer, msg *ChunkDelivery) {
-	//p.logger.Debug("peer.handleChunkDelivery", "ruid", msg.Ruid, "chunks", len(msg.Chunks))
+	p.logger.Debug("clientHandleChunkDelivery", "ruid", msg.Ruid, "chunks", len(msg.Chunks))
 	processReceivedChunksMsgCount.Inc(1)
 	lastReceivedChunksMsg.Update(time.Now().UnixNano())
 	start := time.Now()
 	defer func(start time.Time) {
+		s := time.Since(start)
+		p.logger.Debug("FILTER clientHandleChunkDelivery ended", "took", s)
 		metrics.GetOrRegisterResettingTimer("network.stream.handle_chunk_delivery.total-time", nil).UpdateSince(start)
 	}(start)
 
@@ -928,7 +960,10 @@ func (r *Registry) clientHandleChunkDelivery(ctx context.Context, p *Peer, msg *
 	if provider == nil {
 		p.Drop()
 	}
+	putStart := time.Now()
 	seen, err := provider.Put(ctx, chunks...)
+	s := time.Since(putStart)
+	p.logger.Debug("FILTER provider put ended", "took", s)
 	if err != nil {
 		if err == storage.ErrChunkInvalid {
 			streamChunkDeliveryFail.Inc(1)
@@ -949,7 +984,6 @@ func (r *Registry) clientHandleChunkDelivery(ctx context.Context, p *Peer, msg *
 	for _, dc := range chunks {
 		select {
 		case w.chunks <- dc:
-			p.logger.Trace("sending chunk down the pipe", "addr", dc.Address())
 		case <-w.done:
 			return
 		case <-r.quit:
@@ -958,15 +992,16 @@ func (r *Registry) clientHandleChunkDelivery(ctx context.Context, p *Peer, msg *
 			return
 		}
 	}
-	p.logger.Debug("done writing batch to chunks channel")
 }
 
 func (r *Registry) clientSealBatch(ctx context.Context, p *Peer, provider StreamProvider, w *want) <-chan error {
-	p.logger.Debug("stream.clientSealBatch", "stream", w.stream, "ruid", w.ruid, "from", w.from, "to", *w.to)
+	p.logger.Debug("clientSealBatch", "stream", w.stream, "ruid", w.ruid, "from", w.from, "to", *w.to)
 	errc := make(chan error)
 	go func() {
 		start := time.Now()
 		defer func(start time.Time) {
+			s := time.Since(start)
+			p.logger.Debug("FILTER clientSealBatch ended", "took", s)
 			metrics.GetOrRegisterResettingTimer("network.stream.client_seal_batch.total-time", nil).UpdateSince(start)
 		}(start)
 		for {
@@ -1007,8 +1042,12 @@ func (r *Registry) clientSealBatch(ctx context.Context, p *Peer, provider Stream
 	return errc
 }
 func (r *Registry) serverCollectBatch(ctx context.Context, p *Peer, provider StreamProvider, key interface{}, from, to uint64) (hashes []byte, f, t uint64, empty bool, err error) {
-	p.logger.Debug("stream.CollectBatch", "from", from, "to", to)
+	p.logger.Debug("serverCollectBatch", "from", from, "to", to)
 	batchStart := time.Now()
+	defer func(t time.Time) {
+		s := time.Since(t)
+		p.logger.Debug("FILTER serverCollectBatch ended", "took", s)
+	}(batchStart)
 
 	descriptors, stop := provider.Subscribe(ctx, key, from, to)
 	defer stop()
@@ -1036,7 +1075,7 @@ func (r *Registry) serverCollectBatch(ctx context.Context, p *Peer, provider Str
 			timer.Stop()
 		}
 	}(batchStart)
-
+	var lastChunkTime *time.Time
 	for iterate := true; iterate; {
 		select {
 		case d, ok := <-descriptors:
@@ -1044,6 +1083,11 @@ func (r *Registry) serverCollectBatch(ctx context.Context, p *Peer, provider Str
 				iterate = false
 				break
 			}
+			if lastChunkTime != nil {
+				delta := time.Since(*lastChunkTime)
+				p.logger.Debug("FILTER got chunk from subscribe pull", "time since last chunk", delta)
+			}
+			*lastChunkTime = time.Now()
 			batch = append(batch, d.Address[:]...)
 			batchSize++
 			if batchStartID == nil {
