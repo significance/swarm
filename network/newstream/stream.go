@@ -1090,7 +1090,8 @@ func (r *Registry) serverCollectBatch(ctx context.Context, p *Peer, provider Str
 				delta := time.Since(*lastChunkTime)
 				p.logger.Debug("FILTER got chunk from subscribe pull", "time since last chunk", delta)
 			}
-			*lastChunkTime = time.Now()
+			t := time.Now()
+			lastChunkTime = &t
 			batch = append(batch, d.Address[:]...)
 			batchSize++
 			if batchStartID == nil {
