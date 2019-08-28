@@ -56,7 +56,7 @@ func TestSync(t *testing.T) {
 	}
 	const (
 		fileSize            = 50 * 1024 * 1024
-		nodeCount           = 10
+		nodeCount           = 4
 		iterations          = 10
 		randomUploadingNode = true
 	)
