@@ -528,7 +528,8 @@ func (r *Registry) serverHandleGetRange(ctx context.Context, p *Peer, msg *GetRa
 	startCollect := time.Now()
 	log.Debug("handleGetRange collecting batch", "from", msg.From, "to", msg.To, "stream", msg.Stream)
 	h, f, t, e, err := r.serverCollectBatch(ctx, p, provider, key, msg.From, *msg.To)
-	p.logger.Debug("FILTER serverCollectBatch ended", "took", s)
+	took := time.Since(startCollect)
+	p.logger.Debug("FILTER serverCollectBatch ended", "took", took)
 	if err != nil {
 		log.Error("erroring getting batch for stream", "peer", p.ID(), "stream", msg.Stream, "err", err)
 		p.Drop()
@@ -860,6 +861,8 @@ func (r *Registry) serverHandleWantedHashes(ctx context.Context, p *Peer, msg *W
 	}
 	getStart := time.Now()
 	chunks, err := provider.Get(ctx, wantHashes...)
+	s := time.Since(getStart)
+	p.logger.Debug("FILTER provider get ended", "took", s)
 	if err != nil {
 		p.logger.Error("handleWantedHashesMsg", "err", err)
 		p.Drop()
@@ -920,7 +923,7 @@ func (r *Registry) serverHandleWantedHashes(ctx context.Context, p *Peer, msg *W
 	}
 	startSet := time.Now()
 	err = provider.Set(ctx, addrs...)
-	s := time.Since(startSet)
+	s = time.Since(startSet)
 	p.logger.Debug("FILTER provider set ended", "took", s)
 	if err != nil {
 		p.logger.Error("error setting chunk as synced", "addrs", addrs, "err", err)
