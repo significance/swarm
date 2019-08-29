@@ -14,30 +14,50 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Swarm library. If not, see <http://www.gnu.org/licenses/>.
 
-package swarm
+// +build ignore
+
+package main
 
 import (
 	"context"
 	"crypto/md5"
 	"encoding/hex"
+	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
 	"sync"
-	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/p2p/simulations/adapters"
+	"github.com/ethersphere/swarm"
 	"github.com/ethersphere/swarm/api"
 	"github.com/ethersphere/swarm/chunk"
 	"github.com/ethersphere/swarm/network/simulation"
 	"github.com/ethersphere/swarm/storage"
 )
+
+var (
+	nodeCount           = flag.Int("nodes", 4, "number of nodes")
+	iterations          = flag.Int("iterations", 100, "number upload and retrieve iterations to perform")
+	fileSize            = flag.Int("file-size", 50*1024*1024, "upload file size in bytes")
+	randomUploadingNode = flag.Bool("random-uploading-node", true, "pick a random node to upload file in every iteration")
+	randomRetrievalNode = flag.Bool("random-retrieval-node", true, "pick a single random node to retrieve a file in every iteration")
+	loglevel            = flag.Int("verbosity", 2, "verbosity of logs")
+)
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+
+	flag.Parse()
+
+	log.Root().SetHandler(log.LvlFilterHandler(log.Lvl(*loglevel), log.StreamHandler(os.Stdout, log.TerminalFormat(false))))
+}
 
 var (
 	random = rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -47,20 +67,7 @@ var (
 	bucketKeyInspector  = "inspector"
 )
 
-// TestSync a long running test.
-// Make sure to run it with go test -timeout 60m or some longer timeout period.
-// Example: go test -timeout 60m github.com/ethersphere/swarm -run TestSync -v -count=1 -longrunning
-func TestSync(t *testing.T) {
-	if !*longrunning {
-		t.Skip("longrunning test")
-	}
-	const (
-		fileSize            = 50 * 1024 * 1024
-		nodeCount           = 4
-		iterations          = 20
-		randomUploadingNode = true
-	)
-
+func main() {
 	sim := simulation.NewInProc(map[string]simulation.ServiceFunc{
 		"bootnode": newServiceFunc(true),
 		"swarm":    newServiceFunc(false),
@@ -69,27 +76,27 @@ func TestSync(t *testing.T) {
 
 	bootnode, err := sim.AddNode(simulation.AddNodeWithService("bootnode"))
 	if err != nil {
-		t.Fatal(err)
+		fatal(err)
 	}
 
-	nodes, err := sim.AddNodes(nodeCount, simulation.AddNodeWithService("swarm"))
+	nodes, err := sim.AddNodes(*nodeCount, simulation.AddNodeWithService("swarm"))
 	if err != nil {
-		t.Fatal(err)
+		fatal(err)
 	}
 
 	if err := sim.Net.ConnectNodesStar(nodes, bootnode); err != nil {
-		t.Fatal(err)
+		fatal(err)
 	}
 
-	for i := 1; i <= iterations; i++ {
+	for i := 1; i <= *iterations; i++ {
 		nodeIndex := 0
-		if randomUploadingNode {
+		if *randomUploadingNode {
 			nodeIndex = random.Intn(len(nodes))
 		}
 		log.Warn("FILTER test start", "iteration", i, "uploadingNode", nodeIndex)
 
 		startUpload := time.Now()
-		addr, checksum := uploadRandomFile(t, sim.MustNodeItem(nodes[nodeIndex], bucketKeyAPI).(*api.API), fileSize)
+		addr, checksum := uploadRandomFile(sim.MustNodeItem(nodes[nodeIndex], bucketKeyAPI).(*api.API), int64(*fileSize))
 		log.Warn("FILTER test upload", "iteration", i, "upload", time.Since(startUpload), "checksum", checksum)
 
 		startSyncing := time.Now()
@@ -108,9 +115,18 @@ func TestSync(t *testing.T) {
 		log.Warn("FILTER test syncing", "iteration", i, "syncing", time.Since(startSyncing)-api.InspectorIsPullSyncingTolerance)
 
 		retrievalStart := time.Now()
-		nodeIndex = random.Intn(len(nodes))
 
-		checkFile(t, sim.MustNodeItem(nodes[nodeIndex], bucketKeyAPI).(*api.API), addr, checksum)
+		if *randomRetrievalNode {
+			i := nodeIndex
+			for i == nodeIndex {
+				i = random.Intn(len(nodes))
+			}
+			checkFile(sim.MustNodeItem(nodes[i], bucketKeyAPI).(*api.API), addr, checksum)
+		} else {
+			for _, n := range nodes {
+				checkFile(sim.MustNodeItem(n, bucketKeyAPI).(*api.API), addr, checksum)
+			}
+		}
 
 		log.Warn("FILTER test retrieval", "iteration", i, "retrieval", time.Since(retrievalStart))
 		log.Warn("FILTER test done", "iteration", i, "duration", time.Since(startUpload)-api.InspectorIsPullSyncingTolerance)
@@ -148,22 +164,20 @@ func newServiceFunc(bootnode bool) func(ctx *adapters.ServiceContext, bucket *sy
 		config.Init(privkey, nodekey)
 		config.Port = ""
 
-		swarm, err := NewSwarm(config, nil)
+		sw, err := swarm.NewSwarm(config, nil)
 		if err != nil {
 			return nil, cleanup, err
 		}
-		bucket.Store(simulation.BucketKeyKademlia, swarm.bzz.Hive.Kademlia)
-		bucket.Store(bucketKeyLocalStore, swarm.netStore.Store)
-		bucket.Store(bucketKeyAPI, swarm.api)
-		bucket.Store(bucketKeyInspector, api.NewInspector(swarm.api, swarm.bzz.Hive, swarm.netStore, swarm.newstreamer))
-		log.Info("new swarm", "bzzKey", config.BzzKey, "baseAddr", fmt.Sprintf("%x", swarm.bzz.BaseAddr()))
-		return swarm, cleanup, nil
+		bucket.Store(simulation.BucketKeyKademlia, sw.Bzz().Hive.Kademlia)
+		bucket.Store(bucketKeyLocalStore, sw.NetStore().Store)
+		bucket.Store(bucketKeyAPI, sw.API())
+		bucket.Store(bucketKeyInspector, api.NewInspector(sw.API(), sw.Bzz().Hive, sw.NetStore(), sw.NewStreamer()))
+		log.Info("new swarm", "bzzKey", config.BzzKey, "baseAddr", fmt.Sprintf("%x", sw.Bzz().BaseAddr()))
+		return sw, cleanup, nil
 	}
 }
 
-func uploadRandomFile(t *testing.T, a *api.API, length int64) (chunk.Address, string) {
-	t.Helper()
-
+func uploadRandomFile(a *api.API, length int64) (chunk.Address, string) {
 	ctx := context.Background()
 
 	hasher := md5.New()
@@ -175,11 +189,11 @@ func uploadRandomFile(t *testing.T, a *api.API, length int64) (chunk.Address, st
 		false,
 	)
 	if err != nil {
-		t.Fatalf("store file: %v", err)
+		fatalf("store file: %v", err)
 	}
 
 	if err := wait(ctx); err != nil {
-		t.Fatalf("wait for file to be stored: %v", err)
+		fatalf("wait for file to be stored: %v", err)
 	}
 
 	return key, hex.EncodeToString(hasher.Sum(nil))
@@ -193,21 +207,29 @@ func storeFile(ctx context.Context, a *api.API, r io.Reader, length int64, conte
 	return key, wait, nil
 }
 
-func checkFile(t *testing.T, a *api.API, addr chunk.Address, checksum string) {
-	t.Helper()
-
+func checkFile(a *api.API, addr chunk.Address, checksum string) {
 	r, _ := a.Retrieve(context.Background(), addr)
 
 	hasher := md5.New()
 
 	n, err := io.Copy(hasher, r)
 	if err != nil {
-		t.Fatal(err)
+		fatal(err)
 	}
 
 	got := hex.EncodeToString(hasher.Sum(nil))
 
 	if got != checksum {
-		t.Fatalf("got file checksum %s (length %v), want %s", got, n, checksum)
+		fatalf("got file checksum %s (length %v), want %s", got, n, checksum)
 	}
+}
+
+func fatal(err error) {
+	log.Error(err.Error())
+	os.Exit(1)
+}
+
+func fatalf(s string, a ...interface{}) {
+	log.Error(fmt.Sprintf(s, a...))
+	os.Exit(1)
 }
