@@ -445,10 +445,13 @@ func (r *Registry) serverHandleGetRangeHead(ctx context.Context, p *Peer, msg *G
 		p.Drop()
 		return
 	}
-	collectBatchStart := time.Now()
+	//collectBatchStart := time.Now()
 	h, f, t, e, err := r.serverCollectBatch(ctx, p, provider, key, msg.From, 0)
-	s := time.Since(collectBatchStart)
-	p.logger.Warn("FILTER serverCollectBatch for HEAD ended", "took", s, "key", key)
+
+	if bin := key.(uint8); bin < 4 {
+		//s := time.Since(collectBatchStart)
+		//p.logger.Warn("FILTER serverCollectBatch for HEAD ended", "took", s, "key", key)
+	}
 	p.logger.Debug("peer.serverCollectBatch", "stream", msg.Stream, "len(h)", len(h), "f", f, "t", t, "e", e, "err", err, "ruid", msg.Ruid, "msg.from", msg.From)
 	if err != nil {
 		p.logger.Error("erroring getting live batch for stream", "stream", msg.Stream, "err", err)
@@ -864,7 +867,7 @@ func (r *Registry) serverHandleWantedHashes(ctx context.Context, p *Peer, msg *W
 	}
 	//getStart := time.Now()
 	chunks, err := provider.Get(ctx, wantHashes...)
-	s := time.Since(getStart)
+	//s := time.Since(getStart)
 	//p.logger.Warn("FILTER provider get ended", "took", s)
 	if err != nil {
 		p.logger.Error("handleWantedHashesMsg", "err", err)
@@ -926,7 +929,7 @@ func (r *Registry) serverHandleWantedHashes(ctx context.Context, p *Peer, msg *W
 	}
 	//startSet := time.Now()
 	err = provider.Set(ctx, addrs...)
-	s = time.Since(startSet)
+	//s = time.Since(startSet)
 	//p.logger.Warn("FILTER provider set ended", "took", s)
 	if err != nil {
 		p.logger.Error("error setting chunk as synced", "addrs", addrs, "err", err)
@@ -940,8 +943,8 @@ func (r *Registry) clientHandleChunkDelivery(ctx context.Context, p *Peer, msg *
 	r.setLastReceivedChunkTime()
 	start := time.Now()
 	defer func(start time.Time) {
-		s := time.Since(start)
-		p.logger.Warn("FILTER clientHandleChunkDelivery ended", "took", s)
+		//s := time.Since(start)
+		//p.logger.Warn("FILTER clientHandleChunkDelivery ended", "took", s)
 		metrics.GetOrRegisterResettingTimer("network.stream.handle_chunk_delivery.total-time", nil).UpdateSince(start)
 	}(start)
 
@@ -969,7 +972,7 @@ func (r *Registry) clientHandleChunkDelivery(ctx context.Context, p *Peer, msg *
 	}
 	//putStart := time.Now()
 	seen, err := provider.Put(ctx, chunks...)
-	s := time.Since(putStart)
+	//s := time.Since(putStart)
 	//p.logger.Warn("FILTER provider put ended", "took", s)
 	if err != nil {
 		if err == storage.ErrChunkInvalid {
@@ -1059,7 +1062,7 @@ func (r *Registry) serverCollectBatch(ctx context.Context, p *Peer, provider Str
 	descriptors, stop := provider.Subscribe(ctx, key, from, to)
 	defer stop()
 
-	const batchTimeout = 1 * time.Second
+	const batchTimeout = 10 * time.Millisecond
 
 	var (
 		batch        []byte

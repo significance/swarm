@@ -57,7 +57,7 @@ func TestSync(t *testing.T) {
 	const (
 		fileSize            = 50 * 1024 * 1024
 		nodeCount           = 4
-		iterations          = 10
+		iterations          = 20
 		randomUploadingNode = true
 	)
 
@@ -89,7 +89,7 @@ func TestSync(t *testing.T) {
 		log.Warn("FILTER test start", "iteration", i, "uploadingNode", nodeIndex)
 
 		startUpload := time.Now()
-		addr, checksum := uploadRandomFile(t, sim.MustNodeItem(nodes[nodeIndex], bucketKeyAPI).(*api.API), fileSize)
+		_, checksum := uploadRandomFile(t, sim.MustNodeItem(nodes[nodeIndex], bucketKeyAPI).(*api.API), fileSize)
 		log.Warn("FILTER test upload", "iteration", i, "upload", time.Since(startUpload), "checksum", checksum)
 
 		startSyncing := time.Now()
@@ -108,9 +108,9 @@ func TestSync(t *testing.T) {
 		log.Warn("FILTER test syncing", "iteration", i, "syncing", time.Since(startSyncing)-api.InspectorIsPullSyncingTolerance)
 
 		retrievalStart := time.Now()
-		for _, n := range nodes {
-			checkFile(t, sim.MustNodeItem(n, bucketKeyAPI).(*api.API), addr, checksum)
-		}
+		//for _, n := range nodes {
+		//checkFile(t, sim.MustNodeItem(n, bucketKeyAPI).(*api.API), addr, checksum)
+		//}
 		log.Warn("FILTER test retrieval", "iteration", i, "retrieval", time.Since(retrievalStart))
 		log.Warn("FILTER test done", "iteration", i, "duration", time.Since(startUpload)-api.InspectorIsPullSyncingTolerance)
 	}
