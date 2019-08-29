@@ -48,6 +48,7 @@ var (
 	nodeCount           = cli.Int("nodes", 4, "number of nodes")
 	iterations          = cli.Int("iterations", 100, "number upload and retrieve iterations to perform")
 	fileSize            = cli.Int("file-size", 50*1024*1024, "upload file size in bytes")
+	dbCapacity          = cli.Int("database-capacity", 5000000, "nodes database capacity")
 	randomUploadingNode = cli.Bool("random-uploading-node", true, "pick a random node to upload file in every iteration")
 	randomRetrievalNode = cli.Bool("random-retrieval-node", true, "pick a single random node to retrieve a file in every iteration")
 	verbosity           = cli.Int("verbosity", 2, "verbosity of logs")
@@ -149,6 +150,7 @@ func newServiceFunc(bootnode bool) func(ctx *adapters.ServiceContext, bucket *sy
 		config := api.NewConfig()
 
 		config.BootnodeMode = bootnode
+		config.DbCapacity = uint64(*dbCapacity)
 
 		dir, err := ioutil.TempDir("", "swarm-sync-test-node")
 		if err != nil {
