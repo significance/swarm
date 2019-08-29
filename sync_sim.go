@@ -50,14 +50,12 @@ var (
 	fileSize            = cli.Int("file-size", 50*1024*1024, "upload file size in bytes")
 	randomUploadingNode = cli.Bool("random-uploading-node", true, "pick a random node to upload file in every iteration")
 	randomRetrievalNode = cli.Bool("random-retrieval-node", true, "pick a single random node to retrieve a file in every iteration")
-	loglevel            = cli.Int("verbosity", 2, "verbosity of logs")
+	verbosity           = cli.Int("verbosity", 2, "verbosity of logs")
 	help                = cli.Bool("help", false, "Show program usage.")
 )
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
-
-	log.Root().SetHandler(log.LvlFilterHandler(log.Lvl(*loglevel), log.StreamHandler(os.Stdout, log.TerminalFormat(false))))
 }
 
 var (
@@ -78,6 +76,8 @@ func main() {
 		cli.Usage()
 		return
 	}
+
+	log.Root().SetHandler(log.LvlFilterHandler(log.Lvl(*verbosity), log.StreamHandler(os.Stdout, log.TerminalFormat(false))))
 
 	sim := simulation.NewInProc(map[string]simulation.ServiceFunc{
 		"bootnode": newServiceFunc(true),
