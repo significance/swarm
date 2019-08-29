@@ -43,18 +43,19 @@ import (
 )
 
 var (
-	nodeCount           = flag.Int("nodes", 4, "number of nodes")
-	iterations          = flag.Int("iterations", 100, "number upload and retrieve iterations to perform")
-	fileSize            = flag.Int("file-size", 50*1024*1024, "upload file size in bytes")
-	randomUploadingNode = flag.Bool("random-uploading-node", true, "pick a random node to upload file in every iteration")
-	randomRetrievalNode = flag.Bool("random-retrieval-node", true, "pick a single random node to retrieve a file in every iteration")
-	loglevel            = flag.Int("verbosity", 2, "verbosity of logs")
+	cli = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	nodeCount           = cli.Int("nodes", 4, "number of nodes")
+	iterations          = cli.Int("iterations", 100, "number upload and retrieve iterations to perform")
+	fileSize            = cli.Int("file-size", 50*1024*1024, "upload file size in bytes")
+	randomUploadingNode = cli.Bool("random-uploading-node", true, "pick a random node to upload file in every iteration")
+	randomRetrievalNode = cli.Bool("random-retrieval-node", true, "pick a single random node to retrieve a file in every iteration")
+	loglevel            = cli.Int("verbosity", 2, "verbosity of logs")
+	help                = cli.Bool("help", false, "Show program usage.")
 )
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
-
-	flag.Parse()
 
 	log.Root().SetHandler(log.LvlFilterHandler(log.Lvl(*loglevel), log.StreamHandler(os.Stdout, log.TerminalFormat(false))))
 }
@@ -68,6 +69,16 @@ var (
 )
 
 func main() {
+	if err := cli.Parse(os.Args[1:]); err != nil {
+		cli.Usage()
+		return
+	}
+
+	if *help {
+		cli.Usage()
+		return
+	}
+
 	sim := simulation.NewInProc(map[string]simulation.ServiceFunc{
 		"bootnode": newServiceFunc(true),
 		"swarm":    newServiceFunc(false),
