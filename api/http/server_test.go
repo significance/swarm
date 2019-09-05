@@ -20,6 +20,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -37,15 +38,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethersphere/swarm/storage/feed/lookup"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethersphere/swarm/api"
+	"github.com/ethersphere/swarm/chunk"
 	"github.com/ethersphere/swarm/storage"
 	"github.com/ethersphere/swarm/storage/feed"
+	"github.com/ethersphere/swarm/storage/feed/lookup"
+	"github.com/ethersphere/swarm/storage/pin"
 	"github.com/ethersphere/swarm/testutil"
 )
 
@@ -55,8 +57,8 @@ func init() {
 	log.Root().SetHandler(log.CallerFileHandler(log.LvlFilterHandler(log.Lvl(*loglevel), log.StreamHandler(os.Stderr, log.TerminalFormat(true)))))
 }
 
-func serverFunc(api *api.API) TestServer {
-	return NewServer(api, "")
+func serverFunc(api *api.API, pinAPI *pin.API) TestServer {
+	return NewServer(api, pinAPI, "")
 }
 
 func newTestSigner() (*feed.GenericSigner, error) {
@@ -65,6 +67,185 @@ func newTestSigner() (*feed.GenericSigner, error) {
 		return nil, err
 	}
 	return feed.NewGenericSigner(privKey), nil
+}
+
+// TestGetTag uploads a file, retrieves the tag using http GET and check if it matches
+func TestGetTagUsingHash(t *testing.T) {
+	srv := NewTestSwarmServer(t, serverFunc, nil, nil)
+	defer srv.Close()
+
+	// upload a file
+	data := testutil.RandomBytes(1, 10000)
+	resp, err := http.Post(fmt.Sprintf("%s/bzz-raw:/", srv.URL), "text/plain", bytes.NewReader(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("err %s", resp.Status)
+	}
+	rootHash, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// get the tag for the above upload using root hash of the file
+	getBzzURL := fmt.Sprintf("%s/bzz-tag:/%s", srv.URL, string(rootHash))
+	getResp, err := http.Get(getBzzURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer getResp.Body.Close()
+	if getResp.StatusCode != http.StatusOK {
+		t.Fatalf("err %s", getResp.Status)
+	}
+	retrievedData, err := ioutil.ReadAll(getResp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tag := &chunk.Tag{}
+	err = json.Unmarshal(retrievedData, &tag)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// check if the tag has valid values
+	rcvdAddress, err := hex.DecodeString(string(rootHash))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(tag.Address, rcvdAddress) {
+		t.Fatalf("retrieved address mismatch, expected %x, got %x", string(rootHash), tag.Address)
+	}
+
+	if tag.TotalCounter() != 4 {
+		t.Fatalf("retrieved total tag count mismatch, expected %x, got %x", 4, tag.TotalCounter())
+	}
+
+	if !strings.HasPrefix(tag.Name, "unnamed_tag_") {
+		t.Fatalf("retrieved name prefix mismatch, expected %x, got %x", "unnamed_tag_", tag.Name)
+	}
+
+}
+
+// TestGetTag uploads a file, retrieves the tag using http GET and check if it matches
+func TestGetTagUsingTagId(t *testing.T) {
+	srv := NewTestSwarmServer(t, serverFunc, nil, nil)
+	defer srv.Close()
+
+	// upload a file
+	data := testutil.RandomBytes(1, 10000)
+	resp, err := http.Post(fmt.Sprintf("%s/bzz-raw:/", srv.URL), "text/plain", bytes.NewReader(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("err %s", resp.Status)
+	}
+	rootHash, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tidString := resp.Header.Get(TagHeaderName)
+
+	// get the tag of the above upload using the tagId
+	getBzzURL := fmt.Sprintf("%s/bzz-tag:/?Id=%s", srv.URL, tidString)
+	getResp, err := http.Get(getBzzURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer getResp.Body.Close()
+	if getResp.StatusCode != http.StatusOK {
+		t.Fatalf("err %s", getResp.Status)
+	}
+	retrievedData, err := ioutil.ReadAll(getResp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tag := &chunk.Tag{}
+	err = json.Unmarshal(retrievedData, &tag)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// check if the received tags has valid values
+	rcvdAddress, err := hex.DecodeString(string(rootHash))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(tag.Address, rcvdAddress) {
+		t.Fatalf("retrieved address mismatch, expected %x, got %x", string(rootHash), tag.Address)
+	}
+
+	if tag.TotalCounter() != 4 {
+		t.Fatalf("retrieved total tag count mismatch, expected %x, got %x", 4, tag.TotalCounter())
+	}
+
+	if !strings.HasPrefix(tag.Name, "unnamed_tag_") {
+		t.Fatalf("retrieved name prefix mismatch, expected %x, got %x", "unnamed_tag_", tag.Name)
+	}
+
+}
+
+// TestPinUnpinAPI function tests the pinning and unpinning through HTTP API.
+// It does the following
+//    1) upload a file
+//    2) pin file using HTTP API
+//    3) list all the files using HTTP API and check if the pinned file is present
+//    4) unpin the pinned file
+//    5) list pinned files and check if the unpinned files is not there anymore
+func TestPinUnpinAPI(t *testing.T) {
+	// Initialize Swarm test server
+	srv := NewTestSwarmServer(t, serverFunc, nil, nil)
+	defer srv.Close()
+
+	// upload a file
+	data := testutil.RandomBytes(1, 10000)
+	rootHash := uploadFile(t, srv, data)
+
+	// pin it
+	pinFile(t, srv, rootHash)
+
+	// get the list of files pinned
+	pinnedInfo := listPinnedFiles(t, srv)
+	listInfos := make([]pin.PinInfo, 0)
+	err := json.Unmarshal(pinnedInfo, &listInfos)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Check if the pinned file is present in the list pin command
+	fileInfo := listInfos[0]
+	if hex.EncodeToString(fileInfo.Address) != string(rootHash) {
+		t.Fatalf("roothash not in list of pinned files")
+	}
+	if !fileInfo.IsRaw {
+		t.Fatalf("pinned file is not raw")
+	}
+	if fileInfo.PinCounter != 1 {
+		t.Fatalf("pin counter is not 1")
+	}
+	if fileInfo.FileSize != uint64(len(data)) {
+		t.Fatalf("data size mismatch, expected %x, got %x", len(data), fileInfo.FileSize)
+	}
+
+	// unpin it
+	unpinFile(t, srv, rootHash)
+
+	// get the list of files pinned again
+	unpinnedInfo := listPinnedFiles(t, srv)
+	listInfosUnpin := make([]pin.PinInfo, 0)
+	err = json.Unmarshal(unpinnedInfo, &listInfosUnpin)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Check if the pinned file is not present in the list pin command
+	if len(listInfosUnpin) != 0 {
+		t.Fatalf("roothash is in list of pinned files")
+	}
+
 }
 
 // Test the transparent resolving of feed updates with bzz:// scheme
@@ -78,7 +259,7 @@ func TestBzzWithFeed(t *testing.T) {
 	signer, _ := newTestSigner()
 
 	// Initialize Swarm test server
-	srv := NewTestSwarmServer(t, serverFunc, nil)
+	srv := NewTestSwarmServer(t, serverFunc, nil, nil)
 	defer srv.Close()
 
 	// put together some data for our test:
@@ -102,7 +283,7 @@ func TestBzzWithFeed(t *testing.T) {
 	`)
 
 	// POST data to bzz and get back a content-addressed **manifest hash** pointing to it.
-	resp, err := http.Post(fmt.Sprintf("%s/bzz:/", srv.URL), "text/plain", bytes.NewReader([]byte(dataBytes)))
+	resp, err := http.Post(fmt.Sprintf("%s/bzz:/", srv.URL), "text/plain", bytes.NewReader(dataBytes))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,14 +370,14 @@ func TestBzzWithFeed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(retrievedData, []byte(dataBytes)) {
+	if !bytes.Equal(retrievedData, dataBytes) {
 		t.Fatalf("retrieved data mismatch, expected %x, got %x", dataBytes, retrievedData)
 	}
 }
 
 // Test Swarm feeds using the raw update methods
 func TestBzzFeed(t *testing.T) {
-	srv := NewTestSwarmServer(t, serverFunc, nil)
+	srv := NewTestSwarmServer(t, serverFunc, nil, nil)
 	signer, _ := newTestSigner()
 
 	defer srv.Close()
@@ -473,7 +654,7 @@ func testBzzGetPath(encrypted bool, t *testing.T) {
 
 	addr := [3]storage.Address{}
 
-	srv := NewTestSwarmServer(t, serverFunc, nil)
+	srv := NewTestSwarmServer(t, serverFunc, nil, nil)
 	defer srv.Close()
 
 	for i, mf := range testmanifest {
@@ -711,7 +892,7 @@ func TestBzzTar(t *testing.T) {
 }
 
 func testBzzTar(encrypted bool, t *testing.T) {
-	srv := NewTestSwarmServer(t, serverFunc, nil)
+	srv := NewTestSwarmServer(t, serverFunc, nil, nil)
 	defer srv.Close()
 	fileNames := []string{"tmp1.txt", "tmp2.lock", "tmp3.rtf"}
 	fileContents := []string{"tmp1textfilevalue", "tmp2lockfilelocked", "tmp3isjustaplaintextfile"}
@@ -747,14 +928,14 @@ func testBzzTar(encrypted bool, t *testing.T) {
 	//post tar stream
 	url := srv.URL + "/bzz:/"
 	if encrypted {
-		url = url + "encrypt"
+		url = url + encryptAddr
 	}
 	req, err := http.NewRequest("POST", url, buf)
 	if err != nil {
 		t.Fatal(err)
 	}
 	req.Header.Add("Content-Type", "application/x-tar")
-	req.Header.Add(SwarmTagHeaderName, "test-upload")
+	req.Header.Add(TagHeaderName, "test-upload")
 	client := &http.Client{}
 	resp2, err := client.Do(req)
 	if err != nil {
@@ -848,7 +1029,7 @@ func testBzzTar(encrypted bool, t *testing.T) {
 // by chunk size (4096). It is needed to be checked BEFORE chunking is done, therefore
 // concurrency was introduced to slow down the HTTP request
 func TestBzzCorrectTagEstimate(t *testing.T) {
-	srv := NewTestSwarmServer(t, serverFunc, nil)
+	srv := NewTestSwarmServer(t, serverFunc, nil, nil)
 	defer srv.Close()
 
 	for _, v := range []struct {
@@ -864,7 +1045,7 @@ func TestBzzCorrectTagEstimate(t *testing.T) {
 		defer cancel()
 		addr := ""
 		if v.toEncrypt {
-			addr = "encrypt"
+			addr = encryptAddr
 		}
 		req, err := http.NewRequest("POST", srv.URL+"/bzz:/"+addr, pr)
 		if err != nil {
@@ -873,7 +1054,7 @@ func TestBzzCorrectTagEstimate(t *testing.T) {
 
 		req = req.WithContext(ctx)
 		req.ContentLength = 1000000
-		req.Header.Add(SwarmTagHeaderName, "1000000")
+		req.Header.Add(TagHeaderName, "1000000")
 
 		go func() {
 			for {
@@ -921,7 +1102,7 @@ func TestBzzRootRedirectEncrypted(t *testing.T) {
 }
 
 func testBzzRootRedirect(toEncrypt bool, t *testing.T) {
-	srv := NewTestSwarmServer(t, serverFunc, nil)
+	srv := NewTestSwarmServer(t, serverFunc, nil, nil)
 	defer srv.Close()
 
 	// create a manifest with some data at the root path
@@ -968,7 +1149,7 @@ func testBzzRootRedirect(toEncrypt bool, t *testing.T) {
 }
 
 func TestMethodsNotAllowed(t *testing.T) {
-	srv := NewTestSwarmServer(t, serverFunc, nil)
+	srv := NewTestSwarmServer(t, serverFunc, nil, nil)
 	defer srv.Close()
 	databytes := "bar"
 	for _, c := range []struct {
@@ -1027,7 +1208,7 @@ func httpDo(httpMethod string, url string, reqBody io.Reader, headers map[string
 }
 
 func TestGet(t *testing.T) {
-	srv := NewTestSwarmServer(t, serverFunc, nil)
+	srv := NewTestSwarmServer(t, serverFunc, nil, nil)
 	defer srv.Close()
 
 	for _, testCase := range []struct {
@@ -1110,7 +1291,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestModify(t *testing.T) {
-	srv := NewTestSwarmServer(t, serverFunc, nil)
+	srv := NewTestSwarmServer(t, serverFunc, nil, nil)
 	defer srv.Close()
 	headers := map[string]string{"Content-Type": "text/plain"}
 	res, hash := httpDo("POST", srv.URL+"/bzz:/", bytes.NewReader([]byte("data")), headers, false, t)
@@ -1200,7 +1381,7 @@ func TestMultiPartUpload(t *testing.T) {
 	// POST /bzz:/ Content-Type: multipart/form-data
 	verbose := false
 	// Setup Swarm
-	srv := NewTestSwarmServer(t, serverFunc, nil)
+	srv := NewTestSwarmServer(t, serverFunc, nil, nil)
 	defer srv.Close()
 
 	url := fmt.Sprintf("%s/bzz:/", srv.URL)
@@ -1231,7 +1412,7 @@ func TestMultiPartUpload(t *testing.T) {
 // TestBzzGetFileWithResolver tests fetching a file using a mocked ENS resolver
 func TestBzzGetFileWithResolver(t *testing.T) {
 	resolver := newTestResolveValidator("")
-	srv := NewTestSwarmServer(t, serverFunc, resolver)
+	srv := NewTestSwarmServer(t, serverFunc, resolver, nil)
 	defer srv.Close()
 	fileNames := []string{"dir1/tmp1.txt", "dir2/tmp2.lock", "dir3/tmp3.rtf"}
 	fileContents := []string{"tmp1textfilevalue", "tmp2lockfilelocked", "tmp3isjustaplaintextfile"}
@@ -1406,4 +1587,77 @@ func (t *testResolveValidator) Owner(node [32]byte) (addr common.Address, err er
 
 func (t *testResolveValidator) HeaderByNumber(context.Context, *big.Int) (header *types.Header, err error) {
 	return
+}
+
+func uploadFile(t *testing.T, srv *TestSwarmServer, data []byte) []byte {
+	t.Helper()
+	resp, err := http.Post(fmt.Sprintf("%s/bzz-raw:/", srv.URL), "text/plain", bytes.NewReader(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("err %s", resp.Status)
+	}
+	rootHash, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return rootHash
+}
+
+func pinFile(t *testing.T, srv *TestSwarmServer, rootHash []byte) []byte {
+	t.Helper()
+	pinResp, err := http.Post(fmt.Sprintf("%s/bzz-pin:/%s?raw=true", srv.URL, string(rootHash)), "text/plain", bytes.NewReader([]byte("")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pinResp.Body.Close()
+	if pinResp.StatusCode != http.StatusOK {
+		t.Fatalf("err %s", pinResp.Status)
+	}
+	pinMessage, err := ioutil.ReadAll(pinResp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return pinMessage
+}
+
+func listPinnedFiles(t *testing.T, srv *TestSwarmServer) []byte {
+	t.Helper()
+	getPinURL := fmt.Sprintf("%s/bzz-pin:/", srv.URL)
+	listResp, err := http.Get(getPinURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listResp.Body.Close()
+	if listResp.StatusCode != http.StatusOK {
+		t.Fatalf("err %s", listResp.Status)
+	}
+	pinnedInfo, err := ioutil.ReadAll(listResp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return pinnedInfo
+}
+
+func unpinFile(t *testing.T, srv *TestSwarmServer, rootHash []byte) []byte {
+	t.Helper()
+	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/bzz-pin:/%s", srv.URL, string(rootHash)), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unpinResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unpinResp.Body.Close()
+	if unpinResp.StatusCode != http.StatusOK {
+		t.Fatalf("err %s", unpinResp.Status)
+	}
+	unpinMessage, err := ioutil.ReadAll(unpinResp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return unpinMessage
 }

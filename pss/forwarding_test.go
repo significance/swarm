@@ -6,10 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/p2p/enode"
-	whisper "github.com/ethereum/go-ethereum/whisper/whisperv6"
 	"github.com/ethersphere/swarm/network"
 	"github.com/ethersphere/swarm/p2p/protocols"
 	"github.com/ethersphere/swarm/pot"
@@ -26,13 +24,13 @@ type testCase struct {
 	errors    string
 }
 
-var testCases []testCase
+var crypto CryptoUtils = NewCryptoUtils()
 
 // the purpose of this test is to see that pss.forward() function correctly
 // selects the peers for message forwarding, depending on the message address
 // and kademlia constellation.
 func TestForwardBasic(t *testing.T) {
-	t.Skip("Flaky on macOS on local machines")
+	var testCases []testCase
 	baseAddrBytes := make([]byte, 32)
 	for i := 0; i < len(baseAddrBytes); i++ {
 		baseAddrBytes[i] = 0xFF
@@ -261,8 +259,11 @@ func testForwardMsg(t *testing.T, ps *Pss, c *testCase) {
 	}
 
 	msg := newTestMsg(recipientAddr)
-	ps.forward(msg)
+	err := ps.forward(msg)
 
+	if err != nil {
+		t.Fatal(fmt.Sprintf("test [%s]\nmsg can't be forwarded. Expected no error but got %v", c.name, err.Error()))
+	}
 	// check test results
 	var fail bool
 	precision := len(recipientAddr)
@@ -354,7 +355,7 @@ func newTestMsg(addr []byte) *PssMsg {
 	msg := newPssMsg(&msgParams{})
 	msg.To = addr[:]
 	msg.Expire = uint32(time.Now().Add(time.Second * 60).Unix())
-	msg.Payload = &whisper.Envelope{
+	msg.Payload = &envelope{
 		Topic: [4]byte{},
 		Data:  []byte("i have nothing to hide"),
 	}

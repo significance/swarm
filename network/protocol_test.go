@@ -30,13 +30,14 @@ import (
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/ethereum/go-ethereum/p2p/enr"
-	p2ptest "github.com/ethereum/go-ethereum/p2p/testing"
+	"github.com/ethersphere/swarm/network/capability"
 	"github.com/ethersphere/swarm/p2p/protocols"
+	p2ptest "github.com/ethersphere/swarm/p2p/testing"
 	"github.com/ethersphere/swarm/pot"
 )
 
 const (
-	TestProtocolVersion = 11
+	TestProtocolVersion = 12
 )
 
 var TestProtocolNetworkID = DefaultTestNetworkID
@@ -49,7 +50,6 @@ func init() {
 	flag.Parse()
 	log.Root().SetHandler(log.LvlFilterHandler(log.Lvl(*loglevel), log.StreamHandler(os.Stderr, log.TerminalFormat(true))))
 }
-
 func HandshakeMsgExchange(lhs, rhs *HandshakeMsg, id enode.ID) []p2ptest.Exchange {
 	return []p2ptest.Exchange{
 		{
@@ -71,6 +71,25 @@ func HandshakeMsgExchange(lhs, rhs *HandshakeMsg, id enode.ID) []p2ptest.Exchang
 			},
 		},
 	}
+}
+
+func newBzzHandshakeMsg(version uint64, networkId uint64, addr *BzzAddr, lightNode bool) *HandshakeMsg {
+	capabilities := capability.NewCapabilities()
+	var cap *capability.Capability
+	if lightNode {
+		cap = newLightCapability()
+	} else {
+		cap = newFullCapability()
+	}
+	capabilities.Add(cap)
+	msg := &HandshakeMsg{
+		Version:      version,
+		NetworkID:    networkId,
+		Addr:         addr,
+		Capabilities: capabilities,
+	}
+
+	return msg
 }
 
 func newBzzBaseTester(n int, prvkey *ecdsa.PrivateKey, spec *protocols.Spec, run func(*BzzPeer) error) (*bzzTester, error) {
@@ -217,12 +236,7 @@ func (s *bzzTester) testHandshake(lhs, rhs *HandshakeMsg, disconnects ...*p2ptes
 }
 
 func correctBzzHandshake(addr *BzzAddr, lightNode bool) *HandshakeMsg {
-	return &HandshakeMsg{
-		Version:   TestProtocolVersion,
-		NetworkID: TestProtocolNetworkID,
-		Addr:      addr,
-		LightNode: lightNode,
-	}
+	return newBzzHandshakeMsg(TestProtocolVersion, TestProtocolNetworkID, addr, lightNode)
 }
 
 func TestBzzHandshakeNetworkIDMismatch(t *testing.T) {
@@ -240,7 +254,7 @@ func TestBzzHandshakeNetworkIDMismatch(t *testing.T) {
 
 	err = s.testHandshake(
 		correctBzzHandshake(s.addr, lightNode),
-		&HandshakeMsg{Version: TestProtocolVersion, NetworkID: 321, Addr: NewAddr(node)},
+		newBzzHandshakeMsg(TestProtocolVersion, 321, NewAddr(node), false),
 		&p2ptest.Disconnect{Peer: node.ID(), Error: fmt.Errorf("Handshake error: Message handler error: (msg code 0): network id mismatch 321 (!= %v)", TestProtocolNetworkID)},
 	)
 
@@ -264,7 +278,7 @@ func TestBzzHandshakeVersionMismatch(t *testing.T) {
 
 	err = s.testHandshake(
 		correctBzzHandshake(s.addr, lightNode),
-		&HandshakeMsg{Version: 0, NetworkID: TestProtocolNetworkID, Addr: NewAddr(node)},
+		newBzzHandshakeMsg(0, TestProtocolNetworkID, NewAddr(node), false),
 		&p2ptest.Disconnect{Peer: node.ID(), Error: fmt.Errorf("Handshake error: Message handler error: (msg code 0): version mismatch 0 (!= %d)", TestProtocolVersion)},
 	)
 
@@ -273,6 +287,33 @@ func TestBzzHandshakeVersionMismatch(t *testing.T) {
 	}
 }
 
+// Checks the temporary checkHandshake criteria for legacy full/light capabilities presets
+func TestBzzHandshakeInvalidCapabilities(t *testing.T) {
+	lightNode := false
+	prvkey, err := crypto.GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := newBzzHandshakeTester(1, prvkey, lightNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Stop()
+	node := s.Nodes[0]
+
+	msg := newBzzHandshakeMsg(TestProtocolVersion, TestProtocolNetworkID, NewAddr(node), false)
+	cap := msg.Capabilities.Get(0)
+	cap.Set(14)
+	err = s.testHandshake(
+		correctBzzHandshake(s.addr, lightNode),
+		msg,
+		&p2ptest.Disconnect{Peer: node.ID(), Error: fmt.Errorf("Handshake error: Message handler error: (msg code 0): invalid capabilities setting: %s", msg.Capabilities)},
+	)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+}
 func TestBzzHandshakeSuccess(t *testing.T) {
 	lightNode := false
 	prvkey, err := crypto.GenerateKey()
@@ -288,7 +329,7 @@ func TestBzzHandshakeSuccess(t *testing.T) {
 
 	err = s.testHandshake(
 		correctBzzHandshake(s.addr, lightNode),
-		&HandshakeMsg{Version: TestProtocolVersion, NetworkID: TestProtocolNetworkID, Addr: NewAddr(node)},
+		newBzzHandshakeMsg(TestProtocolVersion, TestProtocolNetworkID, NewAddr(node), false),
 	)
 
 	if err != nil {
@@ -322,18 +363,26 @@ func TestBzzHandshakeLightNode(t *testing.T) {
 
 			err = pt.testHandshake(
 				correctBzzHandshake(pt.addr, false),
-				&HandshakeMsg{Version: TestProtocolVersion, NetworkID: TestProtocolNetworkID, Addr: addr, LightNode: test.lightNode},
+				newBzzHandshakeMsg(TestProtocolVersion, TestProtocolNetworkID, addr, test.lightNode),
 			)
 
 			if err != nil {
 				t.Fatal(err)
 			}
 
+			var nodeCapability *capability.Capability
+			if test.lightNode {
+				nodeCapability = lightCapability
+			} else {
+				nodeCapability = fullCapability
+			}
 			select {
 
 			case <-pt.bzz.handshakes[node.ID()].done:
-				if pt.bzz.handshakes[node.ID()].LightNode != test.lightNode {
-					t.Fatalf("peer LightNode flag is %v, should be %v", pt.bzz.handshakes[node.ID()].LightNode, test.lightNode)
+				for _, cp := range pt.bzz.handshakes[node.ID()].Capabilities.Caps {
+					if cp.String() != nodeCapability.String() {
+						t.Fatalf("peer LightNode flag is %v, should be %v", cp.String(), nodeCapability.String())
+					}
 				}
 			case <-time.After(10 * time.Second):
 				t.Fatal("test timeout")

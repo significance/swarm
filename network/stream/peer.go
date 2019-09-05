@@ -451,9 +451,10 @@ func (p *Peer) runUpdateSyncing() {
 			prevDepth = depth
 		case <-p.streamer.quit:
 			return
+		case <-p.quit:
+			return
 		}
 	}
-	log.Debug("update syncing subscriptions: exiting", "peer", p.ID())
 }
 
 // updateSyncSubscriptions accepts two slices of integers, the first one

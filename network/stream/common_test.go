@@ -36,10 +36,10 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/ethereum/go-ethereum/p2p/simulations/adapters"
-	p2ptest "github.com/ethereum/go-ethereum/p2p/testing"
 	"github.com/ethersphere/swarm/chunk"
 	"github.com/ethersphere/swarm/network"
 	"github.com/ethersphere/swarm/network/simulation"
+	p2ptest "github.com/ethersphere/swarm/p2p/testing"
 	"github.com/ethersphere/swarm/state"
 	"github.com/ethersphere/swarm/storage"
 	"github.com/ethersphere/swarm/storage/localstore"
@@ -227,10 +227,14 @@ func (rrs *roundRobinStore) Get(_ context.Context, _ chunk.ModeGet, _ storage.Ad
 	return nil, errors.New("roundRobinStore doesn't support Get")
 }
 
-func (rrs *roundRobinStore) Put(ctx context.Context, mode chunk.ModePut, ch storage.Chunk) (bool, error) {
+func (rrs *roundRobinStore) GetMulti(_ context.Context, _ chunk.ModeGet, _ ...storage.Address) ([]storage.Chunk, error) {
+	return nil, errors.New("roundRobinStore doesn't support GetMulti")
+}
+
+func (rrs *roundRobinStore) Put(ctx context.Context, mode chunk.ModePut, chs ...storage.Chunk) ([]bool, error) {
 	i := atomic.AddUint32(&rrs.index, 1)
 	idx := int(i) % len(rrs.stores)
-	return rrs.stores[idx].Put(ctx, mode, ch)
+	return rrs.stores[idx].Put(ctx, mode, chs...)
 }
 
 func (rrs *roundRobinStore) Set(ctx context.Context, mode chunk.ModeSet, addr chunk.Address) (err error) {
@@ -403,5 +407,5 @@ func getAllRefs(testData []byte) (storage.AddressCollection, error) {
 	defer cleanup()
 
 	reader := bytes.NewReader(testData)
-	return fileStore.GetAllReferences(context.Background(), reader, false)
+	return fileStore.GetAllReferences(context.Background(), reader)
 }

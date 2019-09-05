@@ -88,7 +88,7 @@ func InitLoggingResponseWriter(h http.Handler) http.Handler {
 }
 
 // InitUploadTag creates a new tag for an upload to the local HTTP proxy
-// if a tag is not named using the SwarmTagHeaderName, a fallback name will be used
+// if a tag is not named using the TagHeaderName, a fallback name will be used
 // when the Content-Length header is set, an ETA on chunking will be available since the
 // number of chunks to be split is known in advance (not including enclosing manifest chunks)
 // the tag can later be accessed using the appropriate identifier in the request context
@@ -99,7 +99,7 @@ func InitUploadTag(h http.Handler, tags *chunk.Tags) http.Handler {
 			err            error
 			estimatedTotal int64 = 0
 			contentType          = r.Header.Get("Content-Type")
-			headerTag            = r.Header.Get(SwarmTagHeaderName)
+			headerTag            = r.Header.Get(TagHeaderName)
 		)
 		if headerTag != "" {
 			tagName = headerTag
@@ -113,7 +113,7 @@ func InitUploadTag(h http.Handler, tags *chunk.Tags) http.Handler {
 			uri := GetURI(r.Context())
 			if uri != nil {
 				log.Debug("got uri from context")
-				if uri.Addr == "encrypt" {
+				if uri.Addr == encryptAddr {
 					estimatedTotal = calculateNumberOfChunks(r.ContentLength, true)
 				} else {
 					estimatedTotal = calculateNumberOfChunks(r.ContentLength, false)
@@ -138,7 +138,7 @@ func InitUploadTag(h http.Handler, tags *chunk.Tags) http.Handler {
 func InstrumentOpenTracing(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		uri := GetURI(r.Context())
-		if uri == nil || r.Method == "" || (uri != nil && uri.Scheme == "") {
+		if uri == nil || r.Method == "" || uri.Scheme == "" {
 			h.ServeHTTP(w, r) // soft fail
 			return
 		}

@@ -52,7 +52,7 @@ func (db *DB) Get(ctx context.Context, mode chunk.ModeGet, addr chunk.Address) (
 		}
 		return nil, err
 	}
-	return chunk.NewChunk(out.Address, out.Data), nil
+	return chunk.NewChunk(out.Address, out.Data).WithPinCounter(out.PinCounter), nil
 }
 
 // get returns Item from the retrieval index
@@ -67,34 +67,14 @@ func (db *DB) get(mode chunk.ModeGet, addr chunk.Address) (out shed.Item, err er
 	switch mode {
 	// update the access timestamp and gc index
 	case chunk.ModeGetRequest:
-		if db.updateGCSem != nil {
-			// wait before creating new goroutines
-			// if updateGCSem buffer id full
-			db.updateGCSem <- struct{}{}
+		db.updateGCItems(out)
+
+	case chunk.ModeGetPin:
+		pinnedItem, err := db.pinIndex.Get(item)
+		if err != nil {
+			return out, err
 		}
-		db.updateGCWG.Add(1)
-		go func() {
-			defer db.updateGCWG.Done()
-			if db.updateGCSem != nil {
-				// free a spot in updateGCSem buffer
-				// for a new goroutine
-				defer func() { <-db.updateGCSem }()
-			}
-
-			metricName := "localstore.updateGC"
-			metrics.GetOrRegisterCounter(metricName, nil).Inc(1)
-			defer totalTimeMetric(metricName, time.Now())
-
-			err := db.updateGC(out)
-			if err != nil {
-				metrics.GetOrRegisterCounter(metricName+".error", nil).Inc(1)
-				log.Error("localstore update gc", "err", err)
-			}
-			// if gc update hook is defined, call it
-			if testHookUpdateGC != nil {
-				testHookUpdateGC()
-			}
-		}()
+		return pinnedItem, nil
 
 	// no updates to indexes
 	case chunk.ModeGetSync:
@@ -103,6 +83,42 @@ func (db *DB) get(mode chunk.ModeGet, addr chunk.Address) (out shed.Item, err er
 		return out, ErrInvalidMode
 	}
 	return out, nil
+}
+
+// updateGCItems is called when ModeGetRequest is used
+// for Get or GetMulti to update access time and gc indexes
+// for all returned chunks.
+func (db *DB) updateGCItems(items ...shed.Item) {
+	if db.updateGCSem != nil {
+		// wait before creating new goroutines
+		// if updateGCSem buffer id full
+		db.updateGCSem <- struct{}{}
+	}
+	db.updateGCWG.Add(1)
+	go func() {
+		defer db.updateGCWG.Done()
+		if db.updateGCSem != nil {
+			// free a spot in updateGCSem buffer
+			// for a new goroutine
+			defer func() { <-db.updateGCSem }()
+		}
+
+		metricName := "localstore.updateGC"
+		metrics.GetOrRegisterCounter(metricName, nil).Inc(1)
+		defer totalTimeMetric(metricName, time.Now())
+
+		for _, item := range items {
+			err := db.updateGC(item)
+			if err != nil {
+				metrics.GetOrRegisterCounter(metricName+".error", nil).Inc(1)
+				log.Error("localstore update gc", "err", err)
+			}
+		}
+		// if gc update hook is defined, call it
+		if testHookUpdateGC != nil {
+			testHookUpdateGC()
+		}
+	}()
 }
 
 // updateGC updates garbage collection index for

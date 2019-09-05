@@ -40,12 +40,15 @@ type Chunk interface {
 	Data() []byte
 	TagID() uint32
 	WithTagID(t uint32) Chunk
+	PinCounter() uint64
+	WithPinCounter(p uint64) Chunk
 }
 
 type chunk struct {
-	addr  Address
-	sdata []byte
-	tagID uint32
+	addr       Address
+	sdata      []byte
+	pinCounter uint64
+	tagID      uint32
 }
 
 func NewChunk(addr Address, data []byte) Chunk {
@@ -60,6 +63,11 @@ func (c *chunk) WithTagID(t uint32) Chunk {
 	return c
 }
 
+func (c *chunk) WithPinCounter(p uint64) Chunk {
+	c.pinCounter = p
+	return c
+}
+
 func (c *chunk) Address() Address {
 	return c.addr
 }
@@ -70,6 +78,10 @@ func (c *chunk) Data() []byte {
 
 func (c *chunk) TagID() uint32 {
 	return c.tagID
+}
+
+func (c *chunk) PinCounter() uint64 {
+	return c.pinCounter
 }
 
 func (self *chunk) String() string {
@@ -148,6 +160,8 @@ func (m ModeGet) String() string {
 		return "Sync"
 	case ModeGetLookup:
 		return "Lookup"
+	case ModeGetPin:
+		return "PinLookup"
 	default:
 		return "Unknown"
 	}
@@ -161,6 +175,8 @@ const (
 	ModeGetSync
 	// ModeGetLookup: when accessed to lookup a a chunk in feeds or other places
 	ModeGetLookup
+	// ModeGetPin: used when a pinned chunk is accessed
+	ModeGetPin
 )
 
 // ModePut enumerates different Putter modes.
@@ -200,6 +216,10 @@ func (m ModeSet) String() string {
 		return "Sync"
 	case ModeSetRemove:
 		return "Remove"
+	case ModeSetPin:
+		return "ModeSetPin"
+	case ModeSetUnpin:
+		return "ModeSetUnpin"
 	default:
 		return "Unknown"
 	}
@@ -213,6 +233,10 @@ const (
 	ModeSetSync
 	// ModeSetRemove: when a chunk is removed
 	ModeSetRemove
+	// ModeSetPin: when a chunk is pinned during upload or separately
+	ModeSetPin
+	// ModeSetUnpin: when a chunk is unpinned using a command locally
+	ModeSetUnpin
 )
 
 // Descriptor holds information required for Pull syncing. This struct
@@ -231,9 +255,11 @@ func (d *Descriptor) String() string {
 
 type Store interface {
 	Get(ctx context.Context, mode ModeGet, addr Address) (ch Chunk, err error)
-	Put(ctx context.Context, mode ModePut, ch Chunk) (exists bool, err error)
+	GetMulti(ctx context.Context, mode ModeGet, addrs ...Address) (ch []Chunk, err error)
+	Put(ctx context.Context, mode ModePut, chs ...Chunk) (exist []bool, err error)
 	Has(ctx context.Context, addr Address) (yes bool, err error)
-	Set(ctx context.Context, mode ModeSet, addr Address) (err error)
+	HasMulti(ctx context.Context, addrs ...Address) (yes []bool, err error)
+	Set(ctx context.Context, mode ModeSet, addrs ...Address) (err error)
 	LastPullSubscriptionBinID(bin uint8) (id uint64, err error)
 	SubscribePull(ctx context.Context, bin uint8, since, until uint64) (c <-chan Descriptor, stop func())
 	Close() (err error)
@@ -244,7 +270,7 @@ type Validator interface {
 	Validate(ch Chunk) bool
 }
 
-// ValidatorStore encapsulates Store by decorting the Put method
+// ValidatorStore encapsulates Store by decorating the Put method
 // with validators check.
 type ValidatorStore struct {
 	Store
@@ -260,14 +286,25 @@ func NewValidatorStore(store Store, validators ...Validator) (s *ValidatorStore)
 	}
 }
 
-// Put overrides Store put method with validators check. If one of the validators
-// return true, the chunk is considered valid and Store Put method is called.
-// If all validators return false, ErrChunkInvalid is returned.
-func (s *ValidatorStore) Put(ctx context.Context, mode ModePut, ch Chunk) (exists bool, err error) {
-	for _, v := range s.validators {
-		if v.Validate(ch) {
-			return s.Store.Put(ctx, mode, ch)
+// Put overrides Store put method with validators check. For Put to succeed,
+// all provided chunks must be validated with true by one of the validators.
+func (s *ValidatorStore) Put(ctx context.Context, mode ModePut, chs ...Chunk) (exist []bool, err error) {
+	for _, ch := range chs {
+		if !s.validate(ch) {
+			return nil, ErrChunkInvalid
 		}
 	}
-	return false, ErrChunkInvalid
+	return s.Store.Put(ctx, mode, chs...)
+}
+
+// validate returns true if one of the validators
+// return true. If all validators return false,
+// the chunk is considered invalid.
+func (s *ValidatorStore) validate(ch Chunk) bool {
+	for _, v := range s.validators {
+		if v.Validate(ch) {
+			return true
+		}
+	}
+	return false
 }
