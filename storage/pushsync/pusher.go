@@ -39,7 +39,7 @@ type DB interface {
 	SubscribePush(context.Context) (<-chan storage.Chunk, func())
 	// called to set a chunk as synced - and allow it to be garbage collected
 	// TODO this should take ... last argument to delete many in one batch
-	Set(context.Context, chunk.ModeSet, storage.Address) error
+	Set(context.Context, chunk.ModeSet, ...chunk.Address) error
 }
 
 // Pusher takes care of the push syncing

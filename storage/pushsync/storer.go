@@ -35,7 +35,7 @@ import (
 // Store is the storage interface to save chunks
 // NetStore implements this interface
 type Store interface {
-	Put(context.Context, chunk.ModePut, chunk.Chunk) (bool, error)
+	Put(context.Context, chunk.ModePut, ...chunk.Chunk) ([]bool, error)
 }
 
 // Storer is the object used by the push-sync server side protocol
