@@ -23,6 +23,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethersphere/swarm/log"
 	"github.com/ethersphere/swarm/spancontext"
 	"github.com/opentracing/opentracing-go"
 )
@@ -156,6 +157,7 @@ func (t *Tag) WaitTillDone(ctx context.Context, s State) error {
 // Done returns true if tag is complete wrt the state given as argument
 func (t *Tag) Done(s State) bool {
 	n, total, err := t.Status(s)
+	log.Trace("tag.done", "n", n, "total", total)
 	return err == nil && n == total
 }
 

@@ -19,6 +19,7 @@ package pushsync
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -82,7 +83,7 @@ func NewPusher(store DB, ps PubSub, tags *chunk.Tags) *Pusher {
 		receipts:      make(chan []byte),
 		ps:            ps,
 		logger:        log.New("self", label(ps.BaseAddr())),
-		retryInterval: 100 * time.Millisecond,
+		retryInterval: 20000 * time.Millisecond,
 	}
 	go p.sync()
 	return p
@@ -124,8 +125,8 @@ func (p *Pusher) sync() {
 	var batchStartTime time.Time
 	ctx := context.Background()
 
-	var average uint64 = 100000 // microseconds
-	var measurements uint64
+	//var average uint64 = 100000 // microseconds
+	//var measurements uint64
 
 	for {
 		select {
@@ -191,7 +192,7 @@ func (p *Pusher) sync() {
 			metrics.GetOrRegisterCounter("pusher.receipts.synced", nil).Inc(1)
 
 			// calibrate retryInterval based on roundtrip times
-			measurements, average = p.updateRetryInterval(item, measurements, average)
+			//measurements, average = p.updateRetryInterval(item, measurements, average)
 
 			// collect synced addresses and corresponding items to do subsequent batch operations
 			syncedAddrs = append(syncedAddrs, addr)
@@ -211,6 +212,7 @@ func (p *Pusher) sync() {
 			for i := 0; i < len(syncedAddrs); i++ {
 				delete(p.pushed, syncedAddrs[i].Hex())
 			}
+
 			// set chunk status to synced, insert to db GC index
 			if err := p.store.Set(ctx, chunk.ModeSetSync, syncedAddrs...); err != nil {
 				log.Error("pushsync: error setting chunks to synced", "err", err)
@@ -251,17 +253,19 @@ func (p *Pusher) handleReceiptMsg(msg []byte) error {
 	if err != nil {
 		return err
 	}
-	p.logger.Trace("Handler", "receipt", label(receipt.Addr))
+	p.logger.Trace("pusher.handleReceiptMsg", "receipt", fmt.Sprintf("%x", receipt.Addr))
 	p.pushReceipt(receipt.Addr)
 	return nil
 }
 
 // pushReceipt just inserts the address into the channel
 func (p *Pusher) pushReceipt(addr []byte) {
-	select {
-	case p.receipts <- addr:
-	case <-p.quit:
-	}
+	go func() {
+		select {
+		case p.receipts <- addr:
+		case <-p.quit:
+		}
+	}()
 }
 
 // sendChunkMsg sends chunks to their destination
@@ -329,7 +333,7 @@ func (p *Pusher) needToSync(ch chunk.Chunk) bool {
 		if p.ps.IsClosestTo(addr) {
 			p.logger.Trace("self is closest to ref: push receipt locally", "ref", hexaddr)
 			item.shortcut = true
-			go p.pushReceipt(addr)
+			p.pushReceipt(addr)
 			return false
 		}
 		p.logger.Trace("self is not the closest to ref: send chunk to neighbourhood", "ref", hexaddr)

@@ -19,6 +19,7 @@ package pushsync
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p"
@@ -80,7 +81,6 @@ func (s *Storer) handleChunkMsg(msg []byte) error {
 	defer osp.Finish()
 	osp.LogFields(olog.String("ref", hex.EncodeToString(chmsg.Addr)))
 	osp.SetTag("addr", hex.EncodeToString(chmsg.Addr))
-	s.logger.Trace("Storer Handler", "chunk", label(chmsg.Addr), "origin", label(chmsg.Origin))
 	return s.processChunkMsg(ctx, chmsg)
 }
 
@@ -91,6 +91,7 @@ func (s *Storer) handleChunkMsg(msg []byte) error {
 // Upon receiving the chunk is saved and a statement of custody
 // receipt message is sent as a response to the originator.
 func (s *Storer) processChunkMsg(ctx context.Context, chmsg *chunkMsg) error {
+	s.logger.Trace("Storer.processChunkMsg", "chunk", fmt.Sprintf("%x", chmsg.Addr), "origin", label(chmsg.Origin))
 	// TODO: double check if it falls in area of responsibility
 	ch := storage.NewChunk(chmsg.Addr, chmsg.Data)
 	if _, err := s.store.Put(ctx, chunk.ModePutSync, ch); err != nil {
@@ -99,7 +100,7 @@ func (s *Storer) processChunkMsg(ctx context.Context, chmsg *chunkMsg) error {
 
 	// if self is closest peer then send back a receipt
 	if s.ps.IsClosestTo(chmsg.Addr) {
-		s.logger.Trace("self is closest to ref", "ref", label(chmsg.Addr))
+		s.logger.Trace("storer.isClosestTo", "ref", fmt.Sprintf("%x", chmsg.Addr))
 		return s.sendReceiptMsg(ctx, chmsg)
 	}
 	return nil
@@ -124,6 +125,6 @@ func (s *Storer) sendReceiptMsg(ctx context.Context, chmsg *chunkMsg) error {
 		return err
 	}
 	to := chmsg.Origin
-	s.logger.Trace("send receipt", "addr", label(rmsg.Addr), "to", label(to))
+	s.logger.Trace("send receipt", "addr", fmt.Sprintf("%x", rmsg.Addr), "to", label(to))
 	return s.ps.Send(to, pssReceiptTopic, msg)
 }
