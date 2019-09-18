@@ -454,7 +454,9 @@ func TestNewSwapFailure(t *testing.T) {
 
 //TestDisconnectThreshold tests that the disconnect threshold is reached when adding the DefaultDisconnectThreshold amount to the peers balance
 func TestDisconnectThreshold(t *testing.T) {
-	swap, clean := newTestSwap(t, ownerKey)
+	testBackend := newTestBackend()
+	defer testBackend.Close()
+	swap, clean := newTestSwap(t, ownerKey, testBackend)
 	defer clean()
 	testPeer := newDummyPeer()
 	testDeploy(context.Background(), swap)
@@ -468,7 +470,9 @@ func TestDisconnectThreshold(t *testing.T) {
 
 //TestPaymentThreshold tests that the payment threshold is reached when subtracting the DefaultPaymentThreshold amount from the peers balance
 func TestPaymentThreshold(t *testing.T) {
-	swap, clean := newTestSwap(t, ownerKey)
+	testBackend := newTestBackend()
+	defer testBackend.Close()
+	swap, clean := newTestSwap(t, ownerKey, testBackend)
 	defer clean()
 	testDeploy(context.Background(), swap)
 	testPeer := newDummyPeerWithSpec(Spec)
@@ -716,7 +720,7 @@ func newBaseTestSwap(t *testing.T, key *ecdsa.PrivateKey, backend *swapTestBacke
 		t.Fatal(err)
 	}
 
-	swap := new(logdir, stateStore, key, testBackend, DefaultDisconnectThreshold, DefaultPaymentThreshold)
+	swap := new(logdir, stateStore, key, backend, DefaultDisconnectThreshold, DefaultPaymentThreshold)
 	return swap, dir, logdir
 }
 

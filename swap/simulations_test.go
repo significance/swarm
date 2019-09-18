@@ -241,7 +241,7 @@ func newSharedBackendSwaps(nodeCount int) (*swapSimulationParams, error) {
 	testBackend := &swapTestBackend{SimulatedBackend: defaultBackend}
 	// finally, create all Swap instances for each node, which share the same backend
 	for i := 0; i < nodeCount; i++ {
-		params.swaps[i] = New(stores[i], keys[i], testBackend)
+		params.swaps[i] = new(stores[i], keys[i], testBackend, DefaultDisconnectThreshold, DefaultPaymentThreshold)
 	}
 
 	params.backend = testBackend
