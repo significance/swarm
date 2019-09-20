@@ -23,7 +23,6 @@ import (
 	"io/ioutil"
 	"math/big"
 	"os"
-	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -89,36 +88,28 @@ func newTestSpec() *protocols.Spec {
 	}
 }
 
-// testPrices holds prices for these test messages
-type testPrices struct {
-	priceMatrix map[reflect.Type]*protocols.Price
-}
-
-// assign prices for the test messages
-func (tp *testPrices) newTestPriceMatrix() {
-	tp.priceMatrix = map[reflect.Type]*protocols.Price{
-		reflect.TypeOf(testMsgBySender{}): {
-			Value:   1000, // arbitrary price for now
-			PerByte: true,
-			Payer:   protocols.Sender,
-		},
-		reflect.TypeOf(testMsgByReceiver{}): {
-			Value:   100, // arbitrary price for now
-			PerByte: false,
-			Payer:   protocols.Receiver,
-		},
-		reflect.TypeOf(testMsgBigPrice{}): {
-			Value:   DefaultPaymentThreshold + 1,
-			PerByte: false,
-			Payer:   protocols.Sender,
-		},
+func (m *testMsgBySender) Price() *protocols.Price {
+	return &protocols.Price{
+		Value:   1000, // arbitrary price for now
+		PerByte: true,
+		Payer:   protocols.Sender,
 	}
 }
 
-// Price returns the price for a (test) message
-func (tp *testPrices) Price(msg interface{}) *protocols.Price {
-	t := reflect.TypeOf(msg).Elem()
-	return tp.priceMatrix[t]
+func (m *testMsgByReceiver) Price() *protocols.Price {
+	return &protocols.Price{
+		Value:   100, // arbitrary price for now
+		PerByte: false,
+		Payer:   protocols.Receiver,
+	}
+}
+
+func (m *testMsgBigPrice) Price() *protocols.Price {
+	return &protocols.Price{
+		Value:   DefaultPaymentThreshold + 1,
+		PerByte: false,
+		Payer:   protocols.Sender,
+	}
 }
 
 // testService encapsulates objects needed for the simulation
@@ -175,13 +166,9 @@ func newSimServiceMap(params *swapSimulationParams) map[string]simulation.Servic
 			dir := params.dirs[params.count]
 			// every node is a different instance of a Swap and gets a different entry in the map
 			params.count++
-			// to create the accounting, we also need a `Price` instance
-			prices := &testPrices{}
-			// create the matrix of test prices
-			prices.newTestPriceMatrix()
 			ts.spec = newTestSpec()
 			// create the accounting instance and assign to the spec
-			ts.spec.Hook = protocols.NewAccounting(balance, prices)
+			ts.spec.Hook = protocols.NewAccounting(balance)
 			ts.swap = balance
 			// deploy the accounting to the `SimulatedBackend`
 			err = testDeploy(context.Background(), balance)
@@ -243,7 +230,7 @@ func newSharedBackendSwaps(nodeCount int) (*swapSimulationParams, error) {
 	testBackend := &swapTestBackend{SimulatedBackend: defaultBackend}
 	// finally, create all Swap instances for each node, which share the same backend
 	for i := 0; i < nodeCount; i++ {
-		params.swaps[i] = new(stores[i], keys[i], testBackend, DefaultDisconnectThreshold, DefaultPaymentThreshold)
+		params.swaps[i] = new("", stores[i], keys[i], testBackend, DefaultDisconnectThreshold, DefaultPaymentThreshold)
 	}
 
 	params.backend = testBackend

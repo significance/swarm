@@ -1293,9 +1293,12 @@ func TestPeerProcessAndVerifyChequeInvalid(t *testing.T) {
 }
 
 func TestSwapLogToFile(t *testing.T) {
+	testBackend := newTestBackend()
+	defer testBackend.Close()
+
 	// create both test swap accounts
-	creditorSwap, storeDirCreditor, logDirCreditor := newBaseTestSwap(t, beneficiaryKey)
-	debitorSwap, storeDirDebitor, logDirDebitor := newBaseTestSwap(t, ownerKey)
+	creditorSwap, storeDirCreditor, logDirCreditor := newBaseTestSwap(t, beneficiaryKey, testBackend)
+	debitorSwap, storeDirDebitor, logDirDebitor := newBaseTestSwap(t, ownerKey, testBackend)
 
 	clean := func() {
 		creditorSwap.Close()
