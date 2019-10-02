@@ -120,14 +120,20 @@ const landing = `{{ define "content" }}
 			<div class="controlHeader">
 				<div id="controlHeaderDownload" class="controlHeaderItem">
 					<a href="#">
-						<span class="controlHeaderItemTitle">Download</span>
+						<span class="controlHeaderItemTitle">Browse</span>
 						<span class="controlHeaderItemIcon">
-							<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
-						 viewBox="0 0 16 20" style="enable-background:new 0 0 16 20;" xml:space="preserve">
-							<path id="XMLID_1425_" d="M8.8,5.3V0H0.9C0.4,0,0,0.4,0,0.9v18.1C0,19.6,0.4,20,0.9,20h13.1c0.5,0,0.9-0.4,0.9-0.9V6.2
-								H9.7C9.2,6.2,8.8,5.8,8.8,5.3z M3.7,12.5h2.5V9.4c0-0.3,0.3-0.6,0.6-0.6h1.2c0.3,0,0.6,0.3,0.6,0.6v3.1h2.5c0.6,0,0.8,0.7,0.4,1.1
-								L8,17.3c-0.3,0.3-0.7,0.3-0.9,0l-3.8-3.7C2.9,13.2,3.1,12.5,3.7,12.5z M14.7,4.1l-3.8-3.8C10.7,0.1,10.5,0,10.2,0H10v5h5V4.8
-								C15,4.5,14.9,4.3,14.7,4.1z"/>
+								<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+								 viewBox="0 0 20 20" style="enable-background:new 0 0 16 20;" xml:space="preserve">
+								<path id="XMLID_1617_" d="M10,0C4.5,0,0,4.5,0,10s4.5,10,10,10c5.5,0,10-4.5,10-10C20,4.5,15.5,0,10,0z M9.8,17.9
+									c-4.4,0-7.9-3.6-7.9-7.9c0-4.4,3.6-7.9,7.9-7.9c0.4,0,0.9,0,1.3,0.1l0,0.8c0,0.3-0.3,0.6-0.6,0.6l-1,0C9.3,3.6,9.1,3.7,9,3.9
+									L8.7,4.4C8.6,4.5,8.5,4.6,8.3,4.6L7.7,4.8C7.5,4.8,7.3,5.1,7.3,5.4l0,0.2c0,0.3,0.3,0.6,0.6,0.6l3.6,0c0.2,0,0.3,0.1,0.4,0.2
+									l0.3,0.3c0.1,0.1,0.3,0.2,0.4,0.2l0.4,0c0.3,0,0.6,0.3,0.6,0.6c0,0.3-0.2,0.5-0.4,0.6l-1.9,0.6c-0.2,0.1-0.3,0-0.5,0l-0.6-0.3
+									c-0.3-0.2-0.6-0.2-1-0.2h0C8.8,8.1,8.3,8.2,8,8.5L6.9,9.3C6.3,9.8,6,10.4,6,11.1l0,0.6c0,0.6,0.2,1.1,0.6,1.5
+									c0.4,0.4,1,0.6,1.5,0.6l1,0c0.3,0,0.6,0.3,0.6,0.6l0,1.2c0,0.5,0.1,1,0.3,1.4c0.2,0.4,0.6,0.6,1,0.6c0.4,0,0.7-0.2,0.9-0.5l0.5-0.8
+									c0.3-0.4,0.6-0.8,1-1.2c0.1-0.1,0.2-0.2,0.2-0.3L14,14c0-0.1,0.1-0.2,0.1-0.3l0.7-1c0.1-0.1,0.1-0.2,0.1-0.4l0-0.5
+									c0-0.3-0.3-0.6-0.6-0.6l-0.3,0c-0.2,0-0.4-0.1-0.5-0.3L13,10.2c-0.2-0.3-0.1-0.8,0.3-0.9l0.1,0c0.2-0.1,0.4,0,0.5,0.1l0.7,0.5
+									c0.2,0.1,0.4,0.1,0.6,0l0.6-0.3c0.2-0.1,0.3-0.3,0.3-0.6l0-0.3c0-0.3,0.3-0.6,0.6-0.6l0.7,0c0.2,0.6,0.2,1.3,0.2,1.9
+									C17.8,14.4,14.2,17.9,9.8,17.9z"/>
 						</span>
 					</a>
 				</div>
@@ -539,11 +545,12 @@ const css = `{{ define "css" }}
 }
 
 .fades{
-	opacity: 1; 
+	opacity: 1;	
 	transition: opacity 1s;
 }
 
 .fadeOut{
+	pointer-events: none;
 	opacity: 0;
 	transition: opacity 1s;
 }
@@ -647,7 +654,8 @@ a{
 	fill: #FFA500;
 }
 
-#controlHeaderInfo .controlHeaderItemIcon{
+#controlHeaderInfo .controlHeaderItemIcon,
+#controlHeaderDownload .controlHeaderItemIcon{
 	top: 2px;
 	position: relative;
 }
@@ -774,10 +782,10 @@ a{
 
 #uploadForm input[type="file"]{
 	position: absolute;
-	left: 0;
-	height: 38px;
-	width: 484px;
-	opacity: 0;
+  left: 0;
+  height: 38px;
+  width: 484px;
+  opacity: 0;
 }
 
 
@@ -910,7 +918,7 @@ a{
 }
 
 .footerItem a{
-	font-size: 13px;  
+	font-size: 13px;	
 	text-decoration: none;
 }
 
@@ -932,7 +940,7 @@ a{
 
 .errorHeader h1{
 	font-family: urw_gothic_ldemi;
-	font-size: 30px;
+	font-size: 20px;
 	color: #FFA500;
 }
 
@@ -940,6 +948,8 @@ a{
 
 
 const js = `{{ define "js" }}
+let gatewayHost = window.location.protocol+"//"+window.location.hostname+(window.location.port ? ":"+window.location.port : "");
+
 class SwarmProgressBar {
 	constructor(gateway){
 		this.gateway = gateway;
@@ -948,8 +958,8 @@ class SwarmProgressBar {
 		this.pollEvery = 1 * 1000;
 		this.checkInterval = false;
 		this.onProgressCallback = false;
-				this.onErrorCallback = false;
-				this.onStartCallback = false;
+		this.onErrorCallback = false;
+		this.onStartCallback = false;
 
 		this.status = {
 			Total: false,
@@ -959,318 +969,349 @@ class SwarmProgressBar {
 			Split: false,
 			Stored: false,
 			Synced: false,
-						Complete: true,
-						swarmHash: false,
-						gatewayLink: false
+			Complete: true,
+			swarmHash: false,
+			gatewayLink: false
 		};
 
 		this.isComplete = false;
 	}
 
-		setStatus(newStatus){
-				for(var key in newStatus) { 
-						this.status[key] = newStatus[key];
-				}
+	setStatus(newStatus){
+		for(var key in newStatus) { 
+			this.status[key] = newStatus[key];
 		}
+	}
 
-		upload(formData) {
-				this.startCheckProgress();
+	upload(formData) {
+		this.startCheckProgress();
 
-				let url = this.gateway + '/bzz:/';
+		let url = this.gateway + '/bzz:/';
 
-				return this.sendRequest(url, 'POST', 'text', formData, formData.get('file').size).then((response) => {
-						let swarmHash = response.responseText;
-						this.setStatus({swarmHash: swarmHash});      
-						this.setStatus({gatewayLink: url + swarmHash + "/" + formData.get('file').name});
-					this.tagId = response.getResponseHeader('x-swarm-tag');
-						this.onUploadedCallback(response);
-				}).catch((error) => {
-						throw new Error(error);
-				});
-		}
+		return this.sendUploadRequest(url, 'POST', 'text', formData, formData.get('file').size).then((response) => {
+			let swarmHash = response.responseText;
+			this.setStatus({swarmHash: swarmHash});      
+			this.setStatus({gatewayLink: url + swarmHash + "/" + formData.get('file').name});
+			this.tagId = response.getResponseHeader('x-swarm-tag');
+			this.onUploadedCallback(response);
+		}).catch((error) => {
+			throw new Error(error);
+		});
+	}
 
-		startCheckProgress(){
-			this.checkProgressInterval = setInterval(()=>{
-				this.checkProgress();
-			}, this.pollEvery);
+	startCheckProgress(){
+		this.checkProgressInterval = setInterval(()=>{
 			this.checkProgress();
-		}
+		}, this.pollEvery);
+		this.checkProgress();
+	}
 
-		checkProgress(){
-				let responseData;
-				if(this.tagId !== false){
-						let url = this.gateway + '/bzz-tag:/?Id=' + this.tagId;
-						return this.sendRequest(url, 'GET', 'json').then((response) => {
-								if(response.responseText){
-										responseData = JSON.parse(response.responseText);
-										this.setStatus({
-												Total: responseData.Total,
-												Seen: responseData.Seen,
-												Sent: responseData.Sent,
-												Split: responseData.Split,
-												Stored: responseData.Stored,
-												Synced: responseData.Synced
-										});
-								}
-								if(this.onProgressCallback){
-										this.onProgressCallback(this.status);
-								}
-								if(responseData.Total === responseData.Seen - responseData.Sent){
-										this.isCompleted = true;
-										clearInterval(this.checkProgressInterval);
-								}
-						}).catch((error) => {
-								this.isErrored = true;
-								clearInterval(this.checkProgressInterval);
-								throw new Error(error);
-						});
-				}else{
-						if(this.onProgressCallback){
-								this.isErrored = true;
-								this.onProgressCallback(this.status);
-						}
+	checkProgress(){
+		let responseData;
+		if(this.tagId !== false){
+			let url = this.gateway + '/bzz-tag:/?Id=' + this.tagId;
+			return this.sendRequest(url, 'GET', 'json').then((response) => {
+				if(response.responseText){
+					responseData = JSON.parse(response.responseText);
+					this.setStatus({
+						Total: responseData.Total,
+						Seen: responseData.Seen,
+						Sent: responseData.Sent,
+						Split: responseData.Split,
+						Stored: responseData.Stored,
+						Synced: responseData.Synced
+					});
 				}
+				if(this.onProgressCallback){
+					this.onProgressCallback(this.status);
+				}
+				if(responseData.Total === responseData.Stored){
+					this.isCompleted = true;
+					clearInterval(this.checkProgressInterval);
+				}
+			}).catch((error) => {
+				this.isErrored = true;
+				clearInterval(this.checkProgressInterval);
+				throw new Error(error);
+			});
+		}else{
+			if(this.onProgressCallback){
+				this.isErrored = true;
+				this.onProgressCallback(this.status);
+			}
 		}
+	}
 
-		sendRequest(url, requestType, responseType = 'text', data, dataLength) {
-				return new Promise((resolve,reject) => {
-						let xhr = new XMLHttpRequest();
+	sendUploadRequest(url, requestType, responseType = 'text', data, dataLength) {
+		return new Promise((resolve,reject) => {
+			let xhr = new XMLHttpRequest();
 
-						xhr.onloadstart = () => {
-								if(this.onStartCallback){
-										this.onStartCallback(event);
-								}
-						};
+			xhr.onloadstart = () => {
+				if(this.onStartCallback){
+					this.onStartCallback(event);
+				}
+			};
 
-						xhr.onreadystatechange = function(){
-								if(xhr.readyState === 4 && xhr.status === 200){
-										if(this.onStartCallback){
-												this.onStartCallback(event);
-										}                
-								}                
-								if(xhr.readyState === 4 && xhr.status === 200){
-										resolve(xhr);              
-								}
-						}
+			xhr.onreadystatechange = function(){           
+				if(xhr.readyState === 4 && xhr.status === 200){
+					resolve(xhr);              
+				}
+			}
 
-						xhr.upload.onprogress = (event) => {
-								console.log('e', event.loaded, dataLength)
-								let received;
-								if(event.loaded > dataLength){
-										received = 100;
-								}else{
-										received = Math.floor((event.loaded / dataLength) * 100, 2);
-								}
-								this.setStatus({Received: received});
-						};
+			xhr.upload.onprogress = (event) => {
+				console.log('e', event.loaded, dataLength)
+				let received;
+				if(event.loaded > dataLength){
+					received = 100;
+				}else{
+					received = Math.floor((event.loaded / dataLength) * 100, 2);
+				}
+				this.setStatus({Received: received});
+			};
 
-						xhr.onerror = (error) => {
-								reject(error);
-						};
+			xhr.onerror = (error) => {
+				reject(error);
+			};
 
-						xhr.open(requestType, url, true);
+			xhr.open(requestType, url, true);
 
-						xhr.setRequestHeader('Accept', responseType);
+			xhr.setRequestHeader('Accept', responseType);
 
-						xhr.send(data);
-				});
+			xhr.send(data);
+		});
 
-		}
+	}
 
-		onProgress(fn){
-			this.onProgressCallback = fn;
-		}
+	sendRequest(url, requestType, responseType = 'text', data, dataLength, onReadyStateChange) {
+		return new Promise((resolve,reject) => {
+			let xhr = new XMLHttpRequest();
 
-		onStart(fn){
-				this.onStartCallback = fn;
-		}    
+			xhr.onreadystatechange = function(){         
+				if(xhr.readyState === 4 && xhr.status === 200){
+					resolve(xhr);              
+				}
+			}
 
-		onError(fn){
-				this.onErrorCallback = fn;
-		}   
+			xhr.onerror = (error) => {
+				reject(error);
+			};
 
-		onUploaded(fn){
-				this.onUploadedCallback = fn;
-		}
+			xhr.open(requestType, url, true);
+
+			xhr.setRequestHeader('Accept', responseType);
+
+			xhr.send(data);
+		});
+
+	}    
+
+	onProgress(fn){
+		this.onProgressCallback = fn;
+	}
+
+	onStart(fn){
+		this.onStartCallback = fn;
+	}    
+
+	onError(fn){
+		this.onErrorCallback = fn;
+	}   
+
+	onUploaded(fn){
+		this.onUploadedCallback = fn;
+	}
 
 }
 
 let humanFileSize = (size) => {
-		var i = Math.floor( Math.log(size) / Math.log(1024) );
-		return ( size / Math.pow(1024, i) ).toFixed(0) * 1 + ' ' + ['bytes', 'kb', 'mb', 'gb', 'tb'][i];
+	var i = Math.floor( Math.log(size) / Math.log(1024) );
+	return ( size / Math.pow(1024, i) ).toFixed(0) * 1 + ' ' + ['bytes', 'kb', 'mb', 'gb', 'tb'][i];
 };
 
 
 let fadeAndReplace = (selector, content, time=600) => {
-		let element = document.querySelector(selector);    
-		element.classList.add("fades");
-		element.classList.add("fadeOut");
-		setTimeout(()=>{
-				element.innerHTML = content;
-				element.classList.remove("fadeOut");        
-		}, time);
+	let element = document.querySelector(selector);    
+	element.classList.add("fades");
+	element.classList.add("fadeOut");
+	setTimeout(()=>{
+		element.innerHTML = content;
+		element.classList.remove("fadeOut");        
+	}, time);
 };
 
 let padNumber = (n, width, z) => {
-	z = z || '0';
-	n = n + '';
-	return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
+  z = z || '0';
+  n = n + '';
+  return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
 }
 
 
 let truncateEnd = function (string, length, separator = '...') {
-		if (string.length <= length) return string;
-		return string.substr(0, length) + separator;
+	if (string.length <= length) return string;
+	return string.substr(0, length) + separator;
 };
 
 let components = [
-		['#controlHeaderDownload','#downloadComponent'],
-		['#controlHeaderUpload','#uploadComponent'],
-		['#controlHeaderInfo','#uploadFeedbackComponent']
+	['#controlHeaderDownload','#downloadComponent'],
+	['#controlHeaderUpload','#uploadComponent'],
+	['#controlHeaderInfo','#uploadFeedbackComponent']
 ];
 
 let fadeInComponent = (headerSelectorIn, selectorIn, time=600) => {
-		let elementIn = document.querySelector(selectorIn);    
-		let headerIn = document.querySelector(headerSelectorIn);    
+	let elementIn = document.querySelector(selectorIn);    
+	let headerIn = document.querySelector(headerSelectorIn);    
 
-		headerIn.classList.add("active");        
+	headerIn.classList.add("active");        
 
+	for (var i = components.length - 1; i >= 0; i--) {
+		if(components[i][1] !== selectorIn){
+			document.querySelector(components[i][0]).classList.remove("active");
+			document.querySelector(components[i][1]).classList.add("fadeOut");
+		}
+	}
+
+	setTimeout(()=>{
 		for (var i = components.length - 1; i >= 0; i--) {
-				if(components[i][1] !== selectorIn){
-						document.querySelector(components[i][0]).classList.remove("active");
-						document.querySelector(components[i][1]).classList.add("fadeOut");
-				}
+			if(components[i][1] !== selectorIn){  
+				document.querySelector(components[i][1]).classList.add("hidden");
+			}
 		}
 
-		setTimeout(()=>{
-				for (var i = components.length - 1; i >= 0; i--) {
-						if(components[i][1] !== selectorIn){  
-								document.querySelector(components[i][1]).classList.add("hidden");
-						}
-				}
 
-
-				elementIn.classList.add("fadeOut");     
-				elementIn.classList.remove("hidden");            
-				setTimeout(()=>{   
-						elementIn.classList.remove("fadeOut");
-				},200);
-		}, time);
+		elementIn.classList.add("fadeOut");     
+		elementIn.classList.remove("hidden");            
+		setTimeout(()=>{   
+			elementIn.classList.remove("fadeOut");
+		},200);
+	}, time);
 };
 
 
 let goToPage = () => {
-	var page = document.getElementById('downloadHashField').value;
-	if (page == "") {
-		var page = "theswarm.eth"
-	}
-	var address = "/bzz:/" + page;
-	location.href = address;
+  var page = document.getElementById('downloadHashField').value;
+  if (page == "") {
+	var page = "theswarm.eth"
+  }
+  var address = "/bzz:/" + page;
+  location.href = address;
 }
 
+let isUploading = false;
+
 document.addEventListener('DOMContentLoaded', function(){ 
-		let form = document.querySelector('#uploadForm');
-		let uploadComponent = document.querySelector('#uploadComponent');
-		let uploadFeedbackComponent = document.querySelector('#uploadFeedbackComponent');
-		form.addEventListener("submit", (e)=>{
-				e.preventDefault();
-				let formData = new FormData(form);
+	let form = document.querySelector('#uploadForm');
+	let uploadComponent = document.querySelector('#uploadComponent');
+	let uploadFeedbackComponent = document.querySelector('#uploadFeedbackComponent');
+	form.addEventListener("submit", (e)=>{
+		e.preventDefault();
 
-				document.querySelector('#uploadFilename').innerHTML = truncateEnd(formData.get('file').name, 25);
+		if(document.querySelector('#uploadSelectFile').value === ""){
+			return false;
+		}
 
-				if(formData.get('file')){
-						let swb = new SwarmProgressBar('');
-						swb.onProgress((status)=>{
-								let totalLength = status.Total.toString().length;
-								document.querySelector('#uploadReceivedCount').innerHTML = status.Received !== false ? padNumber(status.Received, 3) + " / 100 %" : "";
-								document.querySelector('#uploadSentCount').innerHTML = status.Sent !== false ? padNumber(status.Sent, totalLength) + " / " + status.Total : "";
-								document.querySelector('#uploadSplitCount').innerHTML = status.Split !== false ? padNumber(status.Split, totalLength) + " / " + status.Total : "";
-								document.querySelector('#uploadSeenCount').innerHTML = status.Seen !== false ? padNumber(status.Seen, totalLength) + " / " + status.Total : "";
-								document.querySelector('#uploadStoredCount').innerHTML = status.Stored !== false ? padNumber(status.Stored, totalLength) + " / " + status.Total : "";
+		if(isUploading === true){
+			return false;
+		}
 
-								document.querySelector('#uploadReceivedBar').setAttribute('style', status.Received !== false ? "width: "+ status.Received + "%" : "");
-								document.querySelector('#uploadSentBar').setAttribute('style', status.Sent !== false ? "width: "+ Math.floor((status.Sent / status.Total) * 100, 2) + "%" : "");
-								document.querySelector('#uploadSplitBar').setAttribute('style', status.Split !== false ? "width: "+ Math.floor((status.Split / status.Total) * 100, 2) + "%" : "");
-								document.querySelector('#uploadSeenBar').setAttribute('style', status.Seen !== false ? "width: "+ Math.floor((status.Seen / status.Total) * 100, 2) + "%" : "");
-								document.querySelector('#uploadStoredBar').setAttribute('style', status.Stored !== false ? "width: "+ Math.floor((status.Stored / status.Total) * 100, 2) + "%" : "");
+		isUploading = true;
 
-						});
-						swb.onStart((event)=>{
-								fadeInComponent('#controlHeaderInfo', '#uploadFeedbackComponent')
-						})
-						swb.onError((event)=>{
-								console.log('error',event);
-						})
-						swb.onUploaded((response)=>{
-								document.querySelector('#uploadStatusMessage').innerHTML = "Uploaded";                    
-								document.querySelector('#uploadSwarmhash').innerHTML = swb.status.swarmHash !== false ? "to <em>" + truncateEnd(swb.status.swarmHash, 14) + "</em>" : "";    
-								document.querySelector('#uploadButtonLink').classList.remove("fadeOut");
-								document.querySelector('#uploadLinkInput').value = swb.status.gatewayLink;
-								document.querySelector('#uploadButtonHash').classList.remove("fadeOut");                
-								document.querySelector('#uploadHashInput').value = swb.status.swarmHash;
-						})
-						swb.upload(formData);
-				}
-		}, false);
+		let formData = new FormData(form);
 
-		let uploadSelectFile = document.querySelector('#uploadSelectFile');
-		let uploadSelectedFile = document.querySelector('#uploadSelectedFile');
-		form.addEventListener("change", (e)=>{
-				e.preventDefault();
-				if(e.target.files.length > 0){
-						fadeAndReplace(
-								'#uploadComponent .controlComponentMessage', 
-								"Upload '" + truncateEnd(e.target.files[0].name,50) + "' (" + humanFileSize(e.target.files[0].size) +") ?"
-								);
-						uploadSelectedFile.value = truncateEnd(e.target.files[0].name, 96);
-				}else{
-						uploadSelectedFile.value = "";
-				}
-		}, false);
+		document.querySelector('#uploadFilename').innerHTML = truncateEnd(formData.get('file').name, 25);
 
-		document.querySelector('#uploadButtonLink').addEventListener('click', (e) => {
-				e.preventDefault();
+		if(formData.get('file')){
+			let swb = new SwarmProgressBar(gatewayHost);
+			swb.onProgress((status)=>{
+				let totalLength = status.Total.toString().length;
+				document.querySelector('#uploadReceivedCount').innerHTML = status.Received !== false ? padNumber(status.Received, 3) + " / 100 %" : "";
+				document.querySelector('#uploadSentCount').innerHTML = status.Sent !== false ? padNumber(status.Sent, totalLength) + " / " + status.Total : "";
+				document.querySelector('#uploadSplitCount').innerHTML = status.Split !== false ? padNumber(status.Split, totalLength) + " / " + status.Total : "";
+				document.querySelector('#uploadSeenCount').innerHTML = status.Seen !== false ? padNumber(status.Seen, totalLength) + " / " + status.Total : "";
+				document.querySelector('#uploadStoredCount').innerHTML = status.Stored !== false ? padNumber(status.Stored, totalLength) + " / " + status.Total : "";
 
-				let copyText = document.querySelector('#uploadLinkInput');
-				copyText.select();
-				copyText.setSelectionRange(0, 99999); /*For mobile devices*/
-				document.execCommand("copy");
-				alert("Copied link to clipboard!");             
-		})    
+				document.querySelector('#uploadReceivedBar').setAttribute('style', status.Received !== false ? "width: "+ status.Received + "%" : "");
+				document.querySelector('#uploadSentBar').setAttribute('style', status.Sent !== false ? "width: "+ Math.floor((status.Sent / status.Total) * 100, 2) + "%" : "");
+				document.querySelector('#uploadSplitBar').setAttribute('style', status.Split !== false ? "width: "+ Math.floor((status.Split / status.Total) * 100, 2) + "%" : "");
+				document.querySelector('#uploadSeenBar').setAttribute('style', status.Seen !== false ? "width: "+ Math.floor((status.Seen / status.Total) * 100, 2) + "%" : "");
+				document.querySelector('#uploadStoredBar').setAttribute('style', status.Stored !== false ? "width: "+ Math.floor((status.Stored / status.Total) * 100, 2) + "%" : "");
 
-		document.querySelector('#uploadButtonHash').addEventListener('click', (e) => {
-				e.preventDefault();
+			});
+			swb.onStart((event)=>{
+				fadeInComponent('#controlHeaderInfo', '#uploadFeedbackComponent')
+			})
+			swb.onError((event)=>{
+				console.log('error', event);
+			})
+			swb.onUploaded((response)=>{
+				document.querySelector('#uploadStatusMessage').innerHTML = "Uploaded";                    
+				document.querySelector('#uploadSwarmhash').innerHTML = swb.status.swarmHash !== false ? "to <em>" + truncateEnd(swb.status.swarmHash, 14) + "</em>" : "";    
+				document.querySelector('#uploadButtonLink').classList.remove("fadeOut");
+				document.querySelector('#uploadLinkInput').value = swb.status.gatewayLink;
+				document.querySelector('#uploadButtonHash').classList.remove("fadeOut");                
+				document.querySelector('#uploadHashInput').value = swb.status.swarmHash;
+			})
+			swb.upload(formData);
+		}
+	}, false);
 
-				let copyText = document.querySelector('#uploadHashInput');
-				copyText.select();
-				copyText.setSelectionRange(0, 99999); /*For mobile devices*/
-				document.execCommand("copy");
-				alert("Copied hash to clipboard!"); 
-		});
+	let uploadSelectFile = document.querySelector('#uploadSelectFile');
+	let uploadSelectedFile = document.querySelector('#uploadSelectedFile');
+	form.addEventListener("change", (e)=>{
+		e.preventDefault();
+		if(e.target.files.length > 0){
+			fadeAndReplace(
+				'#uploadComponent .controlComponentMessage', 
+				"Upload '" + truncateEnd(e.target.files[0].name,50) + "' (" + humanFileSize(e.target.files[0].size) +") ?"
+				);
+			uploadSelectedFile.value = truncateEnd(e.target.files[0].name, 96);
+		}else{
+			uploadSelectedFile.value = "";
+		}
+	}, false);
 
-		document.querySelector('#controlHeaderDownload').addEventListener('click', (e) => {
-				fadeInComponent('#controlHeaderDownload', '#downloadComponent')        
-		});
+	document.querySelector('#uploadButtonLink').addEventListener('click', (e) => {
+		e.preventDefault();
+
+		let copyText = document.querySelector('#uploadLinkInput');
+		copyText.select();
+		copyText.setSelectionRange(0, 99999); /*For mobile devices*/
+		document.execCommand("copy");
+		alert("Copied link to clipboard!");             
+	})    
+
+	document.querySelector('#uploadButtonHash').addEventListener('click', (e) => {
+		e.preventDefault();
+
+		let copyText = document.querySelector('#uploadHashInput');
+		copyText.select();
+		copyText.setSelectionRange(0, 99999); /*For mobile devices*/
+		document.execCommand("copy");
+		alert("Copied hash to clipboard!"); 
+	});
+
+	document.querySelector('#controlHeaderDownload').addEventListener('click', (e) => {
+		fadeInComponent('#controlHeaderDownload', '#downloadComponent')        
+	});
 
 
-		document.querySelector('#controlHeaderUpload').addEventListener('click', (e) => {
-				document.querySelector('#uploadSelectFile').value = "";
-				document.querySelector('#uploadSelectedFile').value = "";
-				document.querySelector('#uploadComponent .controlComponentMessage').innerHTML = "Select your file to upload it to the Swarm network.";
-				fadeInComponent('#controlHeaderUpload', '#uploadComponent');     
-		});    
+	document.querySelector('#controlHeaderUpload').addEventListener('click', (e) => {
+		document.querySelector('#uploadSelectFile').value = "";
+		document.querySelector('#uploadSelectedFile').value = "";
+		document.querySelector('#uploadComponent .controlComponentMessage').innerHTML = "Select your file to upload it to the Swarm network.";
+		fadeInComponent('#controlHeaderUpload', '#uploadComponent');     
+	});    
 
-		document.querySelector('#uploadCancelButton').addEventListener('click', (e) => {
-				document.querySelector('#uploadSelectFile').value = "";
-				document.querySelector('#uploadSelectedFile').value = "";
-				document.querySelector('#uploadComponent .controlComponentMessage').innerHTML = "Select your file to upload it to the Swarm network.";
-				fadeInComponent('#controlHeaderUpload', '#uploadComponent');     
-		});
+	document.querySelector('#uploadCancelButton').addEventListener('click', (e) => {
+		document.querySelector('#uploadSelectFile').value = "";
+		document.querySelector('#uploadSelectedFile').value = "";
+		document.querySelector('#uploadComponent .controlComponentMessage').innerHTML = "Select your file to upload it to the Swarm network.";
+		fadeInComponent('#controlHeaderUpload', '#uploadComponent');     
+	});
 
-		document.querySelector('#downloadForm button').addEventListener('click', (e) => {
-				e.preventDefault();
-				goToPage();
-		});
+	document.querySelector('#downloadForm button').addEventListener('click', (e) => {
+		e.preventDefault();
+		goToPage();
+	});
 
 }, false);
 {{ end }}`
